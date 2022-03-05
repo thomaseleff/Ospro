@@ -1,0 +1,2 @@
+# Ospro
+Better than decent, open-source espresso machine software, offering data logging, temperature control and pressure profiling.nited States [Dollar], what would be the resulting 'Coin Price' of the cryptocurrency in some 'Target Currency'.
