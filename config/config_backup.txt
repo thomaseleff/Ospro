@@ -1,0 +1,31 @@
+username|Eleff, Tom
+saveDiagsLoc|/media/pi/Ospro/diagnostics
+testDiagsLoc|T:\Documents\Projects\Ospro\diagnostics
+font|Helvetica
+counterSize|115
+metricsSize|48
+headerSize|14
+buttonSize|12
+labelSize|10
+scale|Fahrenheit [F]
+setPoint|215
+deadZoneRange|20
+sampleRate|1
+gainsPID|1.025,0.001,0
+flush|3
+profile|Manual
+white|#FFFFFF
+color1|#D9D9D9
+color2|#808080
+color3|#595959
+color4|#404040
+black|#000000
+red|#FF3333
+orange|#FFAA33
+yellow|#FFCC33
+green|#00d150
+blue|#0057D1
+buttonH|3
+buttonW|8
+padX|5
+padY|5
