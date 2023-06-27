@@ -25,6 +25,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.stats import pearsonr
+from PIL import Image
 
 import utils.utils as utils
 import sensors.temp as temp
@@ -883,6 +884,37 @@ def refresh_settings(
     )
 
 
+def animate():
+    """
+    Variables
+    ---------------------------------------------------------------------
+
+    Description
+    ---------------------------------------------------------------------
+    Initiates .gif automation.
+    """
+
+    global tkFrame
+
+    # Iterate to the next frame
+    logo.seek(tkFrame.get())
+
+    # Iterate frame counter
+    tkFrame.set(tkFrame.get() + 1)
+
+    # Reset frame counter
+    if tkFrame.get() == logo.n_frames:
+        tkFrame.set(0)
+
+    # Display next frame
+    labelLogo.configure(
+        image=customtkinter.CTkImage(
+            light_image=logo,
+            size=(342, 174)
+        )
+    )
+
+
 def idle():
     """
     Variables
@@ -894,6 +926,21 @@ def idle():
     """
 
     global tkTempValue, tkPresValue
+
+    # Print Top Level Frames
+    if len(
+        [
+            child.winfo_class() for child in root.winfo_children() if (
+                child.winfo_class() == 'Toplevel'
+            )
+        ]
+    ) == 0:
+
+        # Animate logo
+        animate()
+
+    else:
+        pass
 
     if idling:
 
@@ -4170,6 +4217,16 @@ if __name__ == '__main__':
     flushLst = list(range(1, 6))
     tkFlush.set(config['settings']['flush'])
 
+    # Store logo
+    tkFrame = tk.IntVar(root)
+    tkFrame.set(0)
+    logo = Image.open(os.path.join(
+            config['session']['assetsLoc'],
+            'logo',
+            'logo.gif'
+        )
+    )
+
     # Set initial sensor values
     tkTempValue = tk.IntVar(root)
     tkTempValue.set(tSensor.read_temp(config))
@@ -4178,6 +4235,28 @@ if __name__ == '__main__':
     tkPresValue.set(pSensor.read_pressure(config))
 
     # Declare main frame components
+    labelLogo = customtkinter.CTkLabel(
+        mainFrame,
+        text=''
+    )
+    labelName = customtkinter.CTkLabel(
+        mainFrame,
+        text='Ospro',
+        font=(
+            config['format']['font'],
+            config['format']['metricsSize'],
+            'bold'
+        ),
+        text_color=theme['CTkButton']['hover_color'][0]
+    )
+    labelTagline = customtkinter.CTkLabel(
+        mainFrame,
+        text='Better than decent, open-source espresso.',
+        font=(
+            config['format']['font'],
+            config['format']['labelSize']
+        )
+    )
     buttonClose = customtkinter.CTkButton(
         mainFrame,
         height=config['format']['buttonHeight'],
@@ -4249,6 +4328,33 @@ if __name__ == '__main__':
     )
 
     # Pack Main Components
+    labelLogo.grid(
+        column=2,
+        row=1,
+        columnspan=3,
+        rowspan=5,
+        padx=config['format']['padX'],
+        pady=config['format']['padY'],
+        sticky=tk.N+tk.E+tk.W
+    )
+    labelName.grid(
+        column=2,
+        row=5,
+        columnspan=3,
+        rowspan=2,
+        padx=0,
+        pady=0,
+        sticky=tk.N+tk.E+tk.W
+    )
+    labelTagline.grid(
+        column=2,
+        row=6,
+        columnspan=3,
+        rowspan=1,
+        padx=config['format']['padX'],
+        pady=config['format']['padY'],
+        sticky=tk.S+tk.E+tk.W
+    )
     buttonClose.grid(
         column=5,
         row=0,
@@ -4260,7 +4366,7 @@ if __name__ == '__main__':
     )
     buttonPower.grid(
         column=2,
-        row=7,
+        row=8,
         columnspan=1,
         rowspan=2,
         padx=config['format']['padX'],
@@ -4269,7 +4375,7 @@ if __name__ == '__main__':
     )
     buttonDash.grid(
         column=3,
-        row=7,
+        row=8,
         columnspan=1,
         rowspan=2,
         padx=config['format']['padX'],
@@ -4278,7 +4384,7 @@ if __name__ == '__main__':
     )
     buttonSettings.grid(
         column=4,
-        row=7,
+        row=8,
         columnspan=1,
         rowspan=2,
         padx=config['format']['padX'],

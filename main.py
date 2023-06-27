@@ -20,7 +20,7 @@ import sys
 import modules.utils.utils as utils
 
 # Initialize global variables
-dev = True
+dev = False
 running = True
 dashboard = False
 temp_pid = False
