@@ -17,14 +17,10 @@ import subprocess
 import time
 import os
 import sys
-import modules.utils.utils as utils
+import ospro.utils.utils as utils
 
 # Initialize global variables
-dev = False
 running = True
-dashboard = False
-temp_pid = False
-pressure_pid = False
 dirLoc = os.path.abspath(
     os.path.dirname(__file__)
 )
@@ -34,7 +30,6 @@ execLoc = os.path.abspath(
 
 # Initialize session dictionary
 session = {
-    'dev': dev,
     'running': running,
     'assetsLoc': os.path.join(
         dirLoc, 'assets'
@@ -45,17 +40,13 @@ session = {
     'diagnosticsLoc': os.path.join(
         dirLoc, 'diagnostics'
     ),
-    'modulesLoc': os.path.join(
-        dirLoc, 'modules'
-    ),
-    'controllersLoc': os.path.join(
-        dirLoc, 'modules'
-    ),
+    'modulesLoc': dirLoc,
+    'controllersLoc': dirLoc,
     'sensorsLoc': os.path.join(
-        dirLoc, 'modules', 'sensors'
+        dirLoc, 'ospro', 'sensors'
     ),
     'utilsLoc': os.path.join(
-        dirLoc, 'modules', 'utils'
+        dirLoc, 'ospro', 'utils'
     )
 }
 

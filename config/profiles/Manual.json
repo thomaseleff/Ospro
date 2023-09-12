@@ -1,6 +1,7 @@
 {
     "settings": {
-        "profileName": "Manual",
+        "name": "Manual",
+        "type": "Manual",
         "extractionDuration": 0.0,
         "infusionDuration": 0,
         "infusionPressure": 0,

@@ -1,6 +1,7 @@
 {
     "settings": {
-        "profileName": "str",
+        "name": "str",
+        "type": "str",
         "extractionDuration": "float",
         "infusionDuration": "int",
         "infusionPressure": "int",
