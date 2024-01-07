@@ -5,7 +5,7 @@ darkdetect==0.8.0
 fonttools==4.47.0
 kiwisolver==1.4.5
 matplotlib==3.8.2
-numpy==1.26.3
+numpy==1.25.2
 packaging==23.2
 pandas==2.1.4
 pillow==10.2.0
