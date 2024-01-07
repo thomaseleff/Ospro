@@ -4,7 +4,7 @@ __pycache__
 /archive
 /planning
 /diagnostics/archive
-/pcb/archive
+/pcb-board/archive
 /ospro/__pycache__
 /ospro/archive
 /ospro/Include
