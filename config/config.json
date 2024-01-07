@@ -9,13 +9,13 @@
         "dashboard": true,
         "tempPID": true,
         "pressurePID": false,
-        "assetsLoc": "t:\\Documents\\Projects\\Open Source Espresso\\assets",
-        "configLoc": "t:\\Documents\\Projects\\Open Source Espresso\\config",
-        "diagnosticsLoc": "t:\\Documents\\Projects\\Open Source Espresso\\diagnostics",
-        "modulesLoc": "t:\\Documents\\Projects\\Open Source Espresso",
-        "controllersLoc": "t:\\Documents\\Projects\\Open Source Espresso",
-        "sensorsLoc": "t:\\Documents\\Projects\\Open Source Espresso\\ospro\\sensors",
-        "utilsLoc": "t:\\Documents\\Projects\\Open Source Espresso\\ospro\\utils"
+        "assetsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\assets",
+        "configLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\config",
+        "diagnosticsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\diagnostics",
+        "modulesLoc": "t:\\Documents\\Projects\\Open-Source-Espresso",
+        "controllersLoc": "t:\\Documents\\Projects\\Open-Source-Espresso",
+        "sensorsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\sensors",
+        "utilsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\utils"
     },
     "format": {
         "width": 800,
@@ -46,13 +46,13 @@
         "scaleLabel": "Fahrenheit [F]",
         "scale": "F",
         "flush": 1,
-        "profile": "User_2"
+        "profile": "Manual"
     },
     "extraction": {
-        "pin": 15
+        "pin": 23
     },
     "tPID": {
-        "pin": 12,
+        "pin": 25,
         "sampleRate": 1.0,
         "setPoint": 93,
         "deadZoneRange": 30,
@@ -62,7 +62,7 @@
         "d": 0.0
     },
     "pPID": {
-        "pin": 0,
+        "pin": 24,
         "sampleRate": 0.1,
         "setPoint": 9.0,
         "deadZoneRange": 1.0,

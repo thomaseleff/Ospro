@@ -171,10 +171,9 @@ class Sensor():
         if not config['session']['dev']:
 
             import board
-            import busio
             import digitalio
             import RPi.GPIO as GPIO
-            import adafruit_max31855 as adafruit
+            import adafruit_max31855
 
             # Define board mode
             if not GPIO.getmode():
@@ -195,15 +194,9 @@ class Sensor():
             )
 
             # Initialize sensors
-            spi = busio.SPI(
-                board.SCK,
-                MOSI=board.MOSI,
-                MISO=board.MISO
-            )
-            cs = digitalio.DigitalInOut(board.D5)
-            self.sensor = adafruit.MAX31855(
-                spi,
-                cs
+            self.sensor = adafruit_max31855.MAX31855(
+                board.SPI(),
+                digitalio.DigitalInOut(board.D5)
             )
         else:
             self.sensor = False
