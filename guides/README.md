@@ -39,7 +39,7 @@ The variable pressure controller provides manual pressure control via a rotary d
 - Lighter/heat gun
 
 ### Instructions
-> [!WARNING]
+> [!CAUTION]
 > Prior to making any modifications, unplug the espresso machine power cable completely.
 
 1. Cut the 16 AWG 600 V wire into three sections, 2 x 30 IN sections and 1 x 8 IN section, using the wire stripper/cutter.
@@ -89,7 +89,7 @@ The water pre-heating coil provides an insulated, passively heated boiler intake
 - 5 MM hex key
 
 ### Instructions
-> [!WARNING]
+> [!CAUTION]
 > Prior to making any modifications, unplug the espresso machine power cable completely.
 
 1. Inspect the ends of the copper tubing, if either end is not perfectly round, use the copper tubing cutter to remove the damaged section.
@@ -162,7 +162,7 @@ The main board contains the Raspberry Pi as well as the other core hardware requ
 - Adjustable wrench
 
 ### Instructions
-> [!WARNING]
+> [!CAUTION]
 > Prior to making any modifications, unplug the espresso machine power cable completely.
 
 1. Insert the T-cobbler, thermocouple amplifier (MAX31855), bi-directional logic level converter (BSS138), gain amplifier (ADS1115), blue LED and resistor into a full-size breadboard according to the following diagram.

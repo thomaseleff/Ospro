@@ -15,7 +15,8 @@ pytz==2023.3.post1
 scipy==1.11.4
 six==1.16.0
 tzdata==2023.4
-Adafruit_ADS1x15>=1.0.2
-adafruit_max31855>=1.6.1
+RPi.GPIO==0.7.1
+adafruit-circuitpython-ads1x15==2.2.25
+adafruit-circuitpython-max31855==3.2.21
 board>=1.0
 smbus>=1.1.post2
