@@ -54,8 +54,9 @@
     "tPID": {
         "pin": "int",
         "sampleRate": "float",
-        "setPoint": "float",
-        "deadZoneRange": "float",
+        "setPoint": "int",
+        "deadZoneRange": "int",
+        "error": "int",
         "p": "float",
         "i": "float",
         "d": "float"

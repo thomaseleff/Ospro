@@ -4,3 +4,12 @@ __pycache__
 /archive
 /planning
 /diagnostics/archive
+/pcb/archive
+/ospro/__pycache__
+/ospro/archive
+/ospro/Include
+/ospro/Lib
+/ospro/Scripts
+/ospro/share
+/ospro/pyvenv.cfg
+.vscode
