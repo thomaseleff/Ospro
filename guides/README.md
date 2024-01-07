@@ -8,7 +8,7 @@ The build guides provide instructions to make hardware and software modification
 
 #### [Hardware](#hardware-guides)
 - [Variable pressure controller](#variable-pressure-controller)
-- [Water preheating coil](#temperature-pre-heating-coil)
+- [Water preheating coil](#water-preheating-coil)
 
 #### [Software](#software-guides)
 - [Ospro](#ospro-prototype)
