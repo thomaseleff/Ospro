@@ -6,6 +6,7 @@ __pycache__
 /archive
 /planning
 /diagnostics/archive
-/pcb-board/archive
 /ospro/__pycache__
 /ospro/archive
+/pcb-board/archive
+/simulation/archive
