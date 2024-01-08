@@ -4,18 +4,18 @@
         "last": "Eleff"
     },
     "session": {
-        "dev": false,
+        "dev": true,
         "running": false,
         "dashboard": true,
         "tempPID": true,
         "pressurePID": false,
-        "assetsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\assets",
-        "configLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\config",
-        "diagnosticsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\diagnostics",
-        "modulesLoc": "t:\\Documents\\Projects\\Open-Source-Espresso",
-        "controllersLoc": "t:\\Documents\\Projects\\Open-Source-Espresso",
-        "sensorsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\sensors",
-        "utilsLoc": "t:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\utils"
+        "assetsLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\assets",
+        "configLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\config",
+        "diagnosticsLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\diagnostics",
+        "modulesLoc": "T:\\Documents\\Projects\\Open-Source-Espresso",
+        "controllersLoc": "T:\\Documents\\Projects\\Open-Source-Espresso",
+        "sensorsLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\sensors",
+        "utilsLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\utils"
     },
     "format": {
         "width": 800,
