@@ -4,7 +4,7 @@
         "last": "Eleff"
     },
     "session": {
-        "dev": true,
+        "dev": false,
         "running": false,
         "dashboard": true,
         "tempPID": true,
@@ -18,8 +18,8 @@
         "utilsLoc": "T:\\Documents\\Projects\\Open-Source-Espresso\\ospro\\utils"
     },
     "format": {
-        "width": 800,
-        "height": 480,
+        "width": 1024,
+        "height": 600,
         "font": "Roboto",
         "headerSize": 14,
         "labelSize": 13,
