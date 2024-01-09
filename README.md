@@ -1,14 +1,18 @@
 <html>
-    <style>
-        hr {
-            border: 0;
-        }
-    </style>
-    <p align="center">
-        <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
-    </p>
-    <h1 align="center" style="border-bottom: 0;;">Ospro</font></h1>
-    <p align="center">Better than decent, open source espresso.</p>
+    <head>
+        <style>
+            hr {
+                border: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <p align="center">
+            <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
+        </p>
+        <h1 align="center" style="border-bottom: 0;;">Ospro</font></h1>
+        <p align="center">Better than decent, open source espresso.</p>
+    </body>
 </html>
 
 > [!IMPORTANT]
