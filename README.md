@@ -3,7 +3,7 @@
         <p align="center">
             <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
         </p>
-        <h1 align="center" style="border-bottom: 0; line-height: 0;">Ospro</font></h1>
+        <h1 align="center">Ospro</font></h1>
         <p align="center">Better than decent, open source espresso.</p>
     </body>
 </html>
@@ -18,11 +18,11 @@
 - Self-hosted web-interface for browsing historical extractions and creating & sharing espresso extraction profiles (upcoming)
 
 **Ospro** is available at an astounding low cost,
-- The cheapest commercial-standard espresso machine with a configurable temperature PID, Rancilio Silvia PID Espresso Machine at **<code style="color: #FF3333">$1,195 USD</code>**
-- The cheapest with fully-integrated software, Decent DE1PRO at **<code style="color: #FF3333">$3,699 USD</code>**
-- The cheapest with manual pressure control, Rocket R Nine One Dual-Boiler Espresso Machine at **<code style="color: #FF3333">$6,500 USD</code>**
+- The cheapest commercial-standard espresso machine with a configurable temperature PID, Rancilio Silvia PID Espresso Machine at **```$1,195 USD```**
+- The cheapest with fully-integrated software, Decent DE1PRO at **```$3,699 USD```**
+- The cheapest with manual pressure control, Rocket R Nine One Dual-Boiler Espresso Machine at **```$6,500 USD```**
 
-The all-in **Ospro** cost-to-build, including the Gaggia Classic (Evo) Pro, competition-level accessories, hardware and software is less than <code style="color: #00D05E">$1,000 USD</code>.
+The all-in **Ospro** cost-to-build, including the Gaggia Classic (Evo) Pro, competition-level accessories, hardware and software is less than **```$1,000 USD```**.
 
 ## Table of contents
 - [Parts](./parts/README.md)
