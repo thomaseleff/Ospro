@@ -1,4 +1,9 @@
 <html>
+    <style>
+        hr {
+            border: 0;
+        }
+    </style>
     <p align="center">
         <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
     </p>
