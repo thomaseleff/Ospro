@@ -1,8 +1,8 @@
-# Build guides
-The build guides provide instructions to make hardware and software modifications to the Gaggia Classic (Evo) Pro espresso machine. These guides include a list of the needed parts (including 3D printer files), tools, and step-by-step assembly instructions.
-
 > [!CAUTION]
 > The following guides are provided for informational purposes only. The publisher(s) of the guides assume(s) no responsibility for any personal or property damage, loss of functionality or warranty, or other consequences resulting from the use of the guides. Users proceed at their own risk and are advised to seek professional assistance.
+
+# Build guides
+The build guides provide instructions to make hardware and software modifications to the Gaggia Classic (Evo) Pro espresso machine. These guides include a list of the needed parts (including 3D printer files), tools, and step-by-step assembly instructions.
 
 ## Table of contents
 
@@ -135,21 +135,24 @@ The main board contains the Raspberry Pi as well as the other core hardware requ
 - 1 x Micro HDMI to mini HDMI cable
 - 1 x SanDisk 16GB Ultra Fit USB 3.1 flash drive
 - 1 x 40 pin GPIO T-Cobbler breakout board with ribbon cable
-- 1 x K Type Thermocouple with M4 Thread
-- 1 x Adafruit K-Type Thermocouple Amplifier - MAX31855
-- 1 x Solid State Relay 40DA DC SSR
-- 1 x 330 ohm resistor
+- 1 x K Type thermocouple with M4 Thread
+- 1 x Adafruit K-type thermocouple amplifier - MAX31855
+- 1 x Solid state relay 40DA DC SSR
+- 1 x 220 ohm resistor
 - 1 x Blue LED
-- 1 x Pressure Transducer 1/8"NPT Thread Stainless Steel (500 PSI)
-- 1 x Adafruit 16-Bit ADC - 4 Channel with Programmable Gain Amplifier - ADS1115
-- 1 x Adafruit 4-channel I2C-safe Bi-directional Logic Level Converter - BSS138
+- 1 x Pressure transducer 1/8 IN NPT thread stainless steel (500 PSI)
+- 1 x Adafruit 16-Bit ADC - 4 Channel with programmable gain amplifier - ADS1115
+- 1 x Adafruit 4-channel I2C-safe Bi-directional logic level converter - BSS138
 - 1 x Full size breadboard
-- 3 x 2 Pin 5 MM PCB Mount Screw Terminal Block
-- 1 x 8 x 10 1/8" thick acrylic sheet
-- 1 x 3/4" x 10 ft roll of removable foam mounting tape
-- 4 x 5 MM M2.5 standoffs and nuts
-- 1 1/4 IN x 1/8 IN FIP brass reducing coupling fitting
-- Various color solid core wire
+- 3 x 2 Pin 5 MM PCB mount screw terminal block
+- 1 x 8 x 10 1/8 IN thick acrylic sheet
+- 1 x 3/4 IN x 10 FT roll of removable foam mounting tape
+- 4 x 10 MM M2.5 standoffs and nuts
+- 4 x M2.5 screws
+- 1 x 1/4 IN x 1/8 IN FIP brass reducing coupling fitting
+- 2 x 16 AWG spade-connector
+- 2 x 16 AWG male disconnect
+- Various colored solid core wire
 
 ### Tools
 - Wire stripper/cutter
@@ -168,32 +171,23 @@ The main board contains the Raspberry Pi as well as the other core hardware requ
 1. Insert the T-cobbler, thermocouple amplifier (MAX31855), bi-directional logic level converter (BSS138), gain amplifier (ADS1115), blue LED and resistor into a full-size breadboard according to the following diagram.
 ![Breadboard part layout](/pcb-board/assets/main_board_prototype_parts.jpg)
 
-2. Connect the components to the T-cobbler using the solid core wire. Cut sections of the wire slightly longer than each run, strip 1/8" of sleeving from each end, then create 90-degree bends using the needle nose pliers. Insert the wires into the breadboard according to the following diagram.
+2. Connect the components to the T-cobbler using the solid core wire. Cut sections of the wire slightly longer than each run, strip ~1/8" of sleeving from each end, then create 90-degree bends using the needle nose pliers. Insert the wires into the breadboard according to the following diagram.
 ![Breadboard wiring layout](/pcb-board/assets/main_board_prototype.jpg)
 
 3. Connect the Raspberry Pi to the T-cobbler using the 40 pin ribbon cable, ensuring that the pins on the Raspberry Pi are correctly connected. Improperly connecting the Raspberry Pi could damage the Pi itself and the parts.
 4. Connect the k-type thermocouple to the screw terminals of the thermocouple amplifier (MAX31855) according to the silkscrean layout on the amplifier PCB.
 5. Connect the red, green and black leads of the pressure transducer to the first, second and third screw terminals (starting on the left) of the PCB mounted screw terminal blocks.
 6. Connect a wire to the fifth screw terminal (starting on the left) to the positive input terminal of the solid state relay. Connect a wire to the 6th screw terminal (starting on the left) to the negative input terminal of the solid state relay.
-7. Place two strips of the foam adhesive tape to the back of the breadboard and adhere it to the surface of the acrylic sheet.
-8. Holding the Raspberry Pi onto the surface of the acrylic sheet, mark each mounting holes position on the acrylic. Drill a hole through the acrylic on each mark. Secure the Raspberry Pi to the acrylic sheet using the 4 x 5 MM M2.5 standoffs and nuts.
+7. Apply two strips of the foam adhesive tape to the back of the breadboard and adhere it to the surface of the acrylic sheet.
+8. Holding the Raspberry Pi onto the surface of the acrylic sheet, mark each mounting holes position on the acrylic. Drill a hole through the acrylic on each mark. Secure the Raspberry Pi to the acrylic sheet using the 4 x 10 MM M2.5 standoffs and nuts.
 9. Unplug the espresso machine power cable.
 10. Remove the top plate of the espresso machine.
 11. Remove the steam wand assembly. Attach the 1/4 IN x 1/8 IN FIP brass reducing coupling to the steam outlet. Wrap 3-4 layers of teflon tape around the adapter threads before tightening with the adjustable wrench.
 12. Attach the pressure transducer to the reducing coupling. Wrap 3-4 layers of teflon tape around the threads before tightening with the adjustable wrench.
 13. Remove the brew thermostat from the boiler. Add a small amount of thermal paste to the M4 threads of the thermocouple. Screw in the thermocouple where the brew thermostat used to be located on the boiler.
 14. Attach the leads that used to be attached to the brew thermostat to the output terminals of the solid state relay.
-15. Replace the top plate of the espresso machine.
-16. Connect the 7 IN touchscreen display to the Raspberry Pi. Place the screen on top of the espresso machine.
-17. Connect the 16 GB USB drive, a keyboard and mouse to the Raspberry Pi.
-18. Plug in the Raspberry Pi power supply.
-19. Update the Raspberry Pi operating system. Enable I2C and reboot.
-20. Navigate to the 16 GB USB drive and run the following command,
-```
-git clone https://github.com/thomaseleff/Ospro.git
-```
-21. Install the Python library requirements from ```requirements_RPi.txt```.
-22. Open and configure ```config.json``` within the ```~/config``` subfolder.
-23. Plug back in the espresso machine power cable.
-24. Run ```main.py```.
-25. Once the user-interface displays, turn on the espresso machine.
+15. Apply two strips of the foam adhesive tape to the back of the solid state relay and adhere it to the inside of the espresso machine enclosure.
+16. Replace the top plate of the espresso machine.
+17. Connect the 7 IN touchscreen display to the Raspberry Pi. Place the screen on top of the espresso machine.
+18. Insert the 16 GB USB drive, and connect a keyboard and mouse to the Raspberry Pi.
+19. Follow the [Installation](/README.md#installation) instructions to setup the Raspberry Pi Ospro software application.
