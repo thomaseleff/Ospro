@@ -1,10 +1,14 @@
+<style>
+    hr {
+        height: 0px;
+    }
+</style>
+
 <p align="center">
     <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
-    </br>
-    <b><font size=7>Ospro</font></b>
-    </br>
-    <font>Better than decent, open source espresso.</font>
 </p>
+<h1 align="center">Ospro</font></h1>
+<p align="center">Better than decent, open source espresso.</p>
 
 > [!IMPORTANT]
 > The resources within this repository are under active development and are expected to change significantly over time without guarantee of backwards compatibility.
