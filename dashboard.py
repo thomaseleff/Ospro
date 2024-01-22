@@ -86,7 +86,10 @@ pSensor.initialize(config)
 if os.path.isdir(config['session']['diagnosticsLoc']):
     databaseLst = os.listdir(config['session']['diagnosticsLoc'])
     databaseLst = [
-        item for item in databaseLst if ('Diagnostics_' and '.csv') in item
+        item for item in databaseLst if (
+            ('Diagnostics_' in item)
+            and ('.csv' in item)
+        )
     ]
 
     # If no diagnostic files exists, then re-assign the ID
