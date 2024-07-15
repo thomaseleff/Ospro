@@ -2,10 +2,7 @@
 Information
 ---------------------------------------------------------------------
 Name        : pressure.py
-Location    : ~/ospro/sensors/
-Author      : Tom Eleff
-Published   : 2023-06-25
-Revised on  : .
+Location    : ~/ospro/sensors
 
 Description
 ---------------------------------------------------------------------
