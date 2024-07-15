@@ -46,7 +46,7 @@
         "scaleLabel": "Fahrenheit [F]",
         "scale": "F",
         "flush": 1,
-        "profile": "This is a really long profile name that will start to break the UI"
+        "profile": "Manual"
     },
     "extraction": {
         "pin": 23
