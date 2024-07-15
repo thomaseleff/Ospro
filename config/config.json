@@ -1,0 +1,73 @@
+{
+    "user": {
+        "first": "Tom",
+        "last": "Eleff"
+    },
+    "session": {
+        "dev": false,
+        "running": false,
+        "dashboard": true,
+        "tempPID": true,
+        "pressurePID": false,
+        "assetsLoc": "T:\\Documents\\Projects\\Ospro\\assets",
+        "configLoc": "T:\\Documents\\Projects\\Ospro\\config",
+        "diagnosticsLoc": "T:\\Documents\\Projects\\Ospro\\diagnostics",
+        "modulesLoc": "T:\\Documents\\Projects\\Ospro",
+        "controllersLoc": "T:\\Documents\\Projects\\Ospro",
+        "sensorsLoc": "T:\\Documents\\Projects\\Ospro\\ospro\\sensors",
+        "utilsLoc": "T:\\Documents\\Projects\\Ospro\\ospro\\utils"
+    },
+    "format": {
+        "width": 1024,
+        "height": 600,
+        "font": "Roboto",
+        "headerSize": 14,
+        "labelSize": 13,
+        "buttonSize": 13,
+        "counterSize": 115,
+        "metricsSize": 48,
+        "buttonHeight": 30,
+        "buttonWidth": 90,
+        "padX": 5,
+        "padY": 5,
+        "white": "#FFFFFF",
+        "black": "#000000",
+        "red": "#FF3333",
+        "orange": "#FFAA33",
+        "yellow": "#FFCC33",
+        "green": "#00D05E",
+        "blue": "#3a7ebf",
+        "color1": "#242424",
+        "color2": "#808080",
+        "color3": "#e5e5e5",
+        "color4": "#f2f2f2"
+    },
+    "settings": {
+        "scaleLabel": "Fahrenheit [F]",
+        "scale": "F",
+        "flush": 1,
+        "profile": "Manual"
+    },
+    "extraction": {
+        "pin": 23
+    },
+    "tPID": {
+        "pin": 25,
+        "sampleRate": 1.0,
+        "setPoint": 93,
+        "deadZoneRange": 30,
+        "error": 15,
+        "p": 1.025,
+        "i": 0.001,
+        "d": 0.0
+    },
+    "pPID": {
+        "pin": 24,
+        "sampleRate": 0.1,
+        "setPoint": 9.0,
+        "deadZoneRange": 1.0,
+        "p": 0.0,
+        "i": 0.0,
+        "d": 0.0
+    }
+}

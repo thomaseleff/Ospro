@@ -1,6 +1,12 @@
 *.pyc
 *.pyo
 __pycache__
+.vscode
+.venv
 /archive
 /planning
 /diagnostics/archive
+/ospro/__pycache__
+/ospro/archive
+/pcb-board/archive
+/simulation/archive

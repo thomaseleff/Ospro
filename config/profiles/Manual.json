@@ -1,0 +1,16 @@
+{
+    "settings": {
+        "name": "Manual",
+        "type": "Manual",
+        "extractionDuration": 0.0,
+        "infusionDuration": 0,
+        "infusionPressure": 0,
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0,
+        "p4": 0,
+        "timeLst": [],
+        "pressureProfileLst": []
+    }
+}

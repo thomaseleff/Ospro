@@ -1,0 +1,16 @@
+{
+    "settings": {
+        "name": "str",
+        "type": "str",
+        "extractionDuration": "float",
+        "infusionDuration": "int",
+        "infusionPressure": "int",
+        "p0": "int",
+        "p1": "int",
+        "p2": "int",
+        "p3": "int",
+        "p4": "int",
+        "timeLst": "list",
+        "pressureProfileLst": "list"
+    }
+}

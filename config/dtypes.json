@@ -1,0 +1,73 @@
+{
+    "user": {
+        "first": "str",
+        "last": "str"
+    },
+    "session": {
+        "dev": "bool",
+        "running": "bool",
+        "dashboard": "bool",
+        "tempPID": "bool",
+        "pressurePID": "bool",
+        "assetsLoc": "str",
+        "configLoc": "str",
+        "diagnosticsLoc": "str",
+        "modulesLoc": "str",
+        "controllersLoc": "str",
+        "sensorsLoc": "str",
+        "utilsLoc": "str"
+    },
+    "format": {
+        "width": "int",
+        "height": "int",
+        "font": "str",
+        "headerSize": "int",
+        "labelSize": "int",
+        "buttonSize": "int",
+        "counterSize": "int",
+        "metricsSize": "int",
+        "buttonHeight": "int",
+        "buttonWidth": "int",
+        "padX": "int",
+        "padY": "int",
+        "white": "str",
+        "black": "str",
+        "red": "str",
+        "orange": "str",
+        "yellow": "str",
+        "green": "str",
+        "blue": "str",
+        "color1": "str",
+        "color2": "str",
+        "color3": "str",
+        "color4": "str"
+    },
+    "settings": {
+        "scaleLabel": "str",
+        "scale": "str",
+        "flush": "int",
+        "profile": "str"
+    },
+    "extraction": {
+        "pin": "int"
+    },
+    "tPID": {
+        "pin": "int",
+        "sampleRate": "float",
+        "setPoint": "int",
+        "deadZoneRange": "int",
+        "error": "int",
+        "p": "float",
+        "i": "float",
+        "d": "float"
+    },
+    "pPID": {
+        "pin": "int",
+        "sampleRate": "float",
+        "setPoint": "float",
+        "deadZoneRange": "float",
+        "p": "float",
+        "i": "float",
+        "d": "float"
+    }
+}
