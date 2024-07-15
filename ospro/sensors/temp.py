@@ -2,10 +2,7 @@
 Information
 ---------------------------------------------------------------------
 Name        : temp.py
-Location    : ~/ospro/sensors/
-Author      : Tom Eleff
-Published   : 2023-06-25
-Revised on  : 2023-07-07
+Location    : ~/ospro/sensors
 
 Description
 ---------------------------------------------------------------------

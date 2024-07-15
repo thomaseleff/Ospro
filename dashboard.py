@@ -3,9 +3,6 @@ Information
 ---------------------------------------------------------------------
 Name        : dashboard.py
 Location    : ~/
-Author      : Tom Eleff
-Published   : 2023-06-25
-Revised on  : 2023-07-07
 
 Description
 ---------------------------------------------------------------------
@@ -17,6 +14,7 @@ import os
 import sys
 import re
 import math
+import textwrap
 import tkinter as tk
 import customtkinter
 import pandas as pd
@@ -1581,7 +1579,13 @@ def delete_callback(
             }
         }
     )
-    tkProfile.set(config['settings']['profile'])
+    tkProfile.set(
+        textwrap.shorten(
+            str(config['settings']['profile']),
+            width=30,
+            break_long_words=True
+        )
+    )
 
     # Refresh pressure profile dropdown selection
     refresh_settings(selectProfile)
@@ -1730,6 +1734,14 @@ def profile_callback(
 
     # Update settings
     config['settings']['profile'] = str(value).strip()
+    tkProfile.set(
+        textwrap.shorten(
+            str(value).strip(),
+            width=30,
+            break_long_words=True
+        )
+    )
+
     try:
         utils.write_config(
             configLoc=os.path.join(
@@ -2150,6 +2162,10 @@ def create_toplevel_frame(
             int((frame.winfo_screenheight()/2) - (height/2))
         )
     )
+
+    # Prevent grid resizing
+    frame.grid_propagate(False)
+
     return frame
 
 
@@ -4085,6 +4101,7 @@ if __name__ == '__main__':
             int((root.winfo_screenheight()/2) - (config['format']['height']/2))
         )
     )
+    root.grid_propagate(False)
     root.grid_columnconfigure(
         8,
         minsize=int(
@@ -4203,7 +4220,13 @@ if __name__ == '__main__':
         )
         print("WARNING: Pressure profile reset to default 'Manual' profile.")
 
-    tkProfile.set(config['settings']['profile'])
+    tkProfile.set(
+        textwrap.shorten(
+            str(config['settings']['profile']),
+            width=30,
+            break_long_words=True
+        )
+    )
 
     tkFlush = tk.IntVar(root)
     flushLst = list(range(1, 6))

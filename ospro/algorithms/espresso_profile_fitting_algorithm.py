@@ -2,10 +2,7 @@
 Information
 ---------------------------------------------------------------------
 Name        : espresso_profile_fitting_algorithm.py
-Location    : ~/ospro/algorithms/
-Author      : Tom Eleff
-Published   : 2023-09-03
-Revised on  : ~
+Location    : ~/ospro/algorithms
 
 Description
 ---------------------------------------------------------------------
