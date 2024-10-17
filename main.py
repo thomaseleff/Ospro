@@ -119,7 +119,15 @@ def poll(
     if app.poll() is None:
         pass
     elif app.returncode > 0:
+
+        # Restart
         app = subprocess.Popen([executable_path, app_path])
+
+        # Logging
+        Logging.debug(
+            'NOTE: {%s} restarted successfully.' % (os.path.basename(app_path))
+        )
+
     else:
         app = False
 
