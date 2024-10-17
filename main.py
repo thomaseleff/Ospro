@@ -1,202 +1,189 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : main.py
-Location    : ~/
+""" Ospro """
 
-Description
----------------------------------------------------------------------
-Contains initialization functions and runs the Ospro application.
-"""
-
-# Import modules
-import subprocess
-import time
+from typing import Union
 import os
 import sys
-import ospro.utils.utils as utils
+import time
+import subprocess
+import logging
+from pytensils import config
 
 # Initialize global variables
-running = True
-dirLoc = os.path.abspath(
+RUNNING: bool = True
+DIR_NAME: Union[str, os.PathLike] = os.path.abspath(
     os.path.dirname(__file__)
 )
-execLoc = os.path.abspath(
-    sys.executable
-)
-
-# Initialize session dictionary
-session = {
-    'running': running,
+EXECUTABLE: Union[str, os.PathLike] = os.path.abspath(sys.executable)
+SESSION: dict = {
+    'running': RUNNING,
     'assetsLoc': os.path.join(
-        dirLoc, 'assets'
+        DIR_NAME, 'assets'
     ),
     'configLoc': os.path.join(
-        dirLoc, 'config'
+        DIR_NAME, 'config'
     ),
     'diagnosticsLoc': os.path.join(
-        dirLoc, 'diagnostics'
+        DIR_NAME, 'diagnostics'
     ),
-    'modulesLoc': dirLoc,
-    'controllersLoc': dirLoc,
+    'modulesLoc': DIR_NAME,
+    'controllersLoc': DIR_NAME,
     'sensorsLoc': os.path.join(
-        dirLoc, 'ospro', 'sensors'
+        DIR_NAME, 'ospro', 'sensors'
     ),
     'utilsLoc': os.path.join(
-        dirLoc, 'ospro', 'utils'
+        DIR_NAME, 'ospro', 'utils'
     )
 }
 
 
-# Define functions
+# Define app-orchestration functions
 def initialize(
-    session
-):
-    """
-    Variables
-    ---------------------------------------------------------------------
-    session                 = <dict> Dictionary object containing the
-                                parameters essential to the session.
+    session_object: dict,
+    Logging: logging.Logger
+) -> config.Handler:
+    """ Checks for the dashboard, temp_pid and pressure_pid modules. Reads,
+    validates and updates ~/config.json and returns a
+    `pytensils.config.Handler` object.
 
-    Description
-    ---------------------------------------------------------------------
-    Checks for the dashboard, temp_pid and pressure_pid modules. Reads,
-    validates and updates ~/config.json and returns the config dictionary
-    object.
+    Parameters
+    ----------
+    session_object: `dict`
+        Dictionary object containing the parameters essential to the session.
+    Logging: `logging.Logger`
+        Logging object for debug console logging.
     """
 
     # Check dashboard
     if os.path.isfile(
         os.path.join(
-            session['modulesLoc'], 'dashboard.py'
+            session_object['modulesLoc'], 'dashboard.py'
         )
     ):
-        session['dashboard'] = True
+        session_object['dashboard'] = True
 
     # Check temperature PID
     if os.path.isfile(
         os.path.join(
-            session['controllersLoc'], 'temp_pid.py'
+            session_object['controllersLoc'], 'temp_pid.py'
         )
-    ) and (session['dashboard']):
-        session['tempPID'] = True
+    ) and (session_object['dashboard']):
+        session_object['tempPID'] = True
 
     # Check pressure PID
     if os.path.isfile(
         os.path.join(
-            session['controllersLoc'], 'pressure_pid.py'
+            session_object['controllersLoc'], 'pressure_pid.py'
         )
-    ) and (session['dashboard']):
-        session['pressurePID'] = True
+    ) and (session_object['dashboard']):
+        session_object['pressurePID'] = True
 
     # Read config
-    config = utils.read_config(
-        configLoc=os.path.join(
-            session['configLoc'], 'config.json'
-        )
-    )
-    config['session'] = {**config['session'], **session}
+    Config = config.Handler(path=os.path.join(session_object['configLoc']))
+    Config.data['session'] = {**Config.data['session'], **session_object}
 
     # Validate config
-    utils.validate_config(
-        config,
-        utils.read_config(
-            configLoc=os.path.join(
-                session['configLoc'], 'dtypes.json'
-            )
-        )
-    )
+    if Config.validate(
+        dtypes=config.Handler(
+            path=os.path.join(session_object['configLoc']),
+            file_name='dtypes.json'
+        ).to_dict()
+    ):
 
-    # Update config with session parameters
-    utils.write_config(
-        configLoc=os.path.join(
-            session['configLoc'], 'config.json'
-        ),
-        config=config
-    )
+        # Logging
+        Logging.debug('NOTE: Config validation completed successfully.')
 
-    return config
+        # Update config with session parameters
+        Config.write()
+
+    return Config
 
 
 def poll(
-    app,
-    execLoc,
-    appLoc
+    app: subprocess.Popen,
+    executable_path: Union[str, os.PathLike],
+    app_path: Union[str, os.PathLike]
 ):
-    """
-    Variables
-    ---------------------------------------------------------------------
-    app                     = <class> Subprocess object for an
-                                application.
-
-    Description
-    ---------------------------------------------------------------------
-    Checks the status of the application and re-starts it when not
+    """ Checks the status of the application and re-starts it when not
     running.
+
+    Parameters
+    ----------
+    app: `subprocess.Popen`
+        Class instance of the application.
+    executable_path: `Union[str, os.PathLike]`
+        The local file-path of the Python executable.
+    app_path: `Union[str, os.PathLike]`
+        The local file-path of the application entrypoint.
     """
 
     if app.poll() is None:
         pass
     elif app.returncode > 0:
-        app = subprocess.Popen(
-            [execLoc, appLoc]
-        )
+        app = subprocess.Popen([executable_path, app_path])
     else:
         app = False
 
     return app
 
 
-# Main
 if __name__ == '__main__':
 
-    # Initialize the application
-    config = initialize(session)
+    # Setup logging
+    Logging = logging.getLogger('ospro')
+    Logging.setLevel(level=logging.DEBUG)
+    debugger = logging.StreamHandler()
+    debugger.setLevel(level=logging.DEBUG)
+    debugger.setFormatter(
+        fmt=logging.Formatter('[ospro] %(message)s')
+    )
+    Logging.addHandler(hdlr=debugger)
 
-    # Initialize dashboard
-    if config['session']['dashboard']:
+    # Initialize the application
+    Config = initialize(session_object=SESSION, Logging=Logging)
+
+    # Initialize the dashboard-UI
+    if Config.data['session']['dashboard']:
         dashboard_app = subprocess.Popen(
             [
-                execLoc,
+                EXECUTABLE,
                 os.path.join(
-                    config['session']['modulesLoc'],
+                    Config.data['session']['modulesLoc'],
                     'dashboard.py'
                 )
             ]
         )
 
-    # Initialize temperature controller
-    if config['session']['tempPID']:
+    # Initialize the temperature controller
+    if Config.data['session']['tempPID']:
         temp_pid_app = subprocess.Popen(
             [
-                execLoc,
+                EXECUTABLE,
                 os.path.join(
-                    config['session']['controllersLoc'],
+                    Config.data['session']['controllersLoc'],
                     'temp_pid.py'
                 )
             ]
         )
 
-    # Initialize pressure controller
-    if config['session']['pressurePID']:
+    # Initialize the pressure controller
+    if Config.data['session']['pressurePID']:
         pass
         # pressure_pid_app = subprocess.Popen(
         #     [
-        #         execLoc,
+        #         EXECUTABLE,
         #         os.path.join(
-        #             config['session']['controllersLoc'],
+        #             Config.data['session']['controllersLoc'],
         #             'pressure_pid.py'
         #         )
         #     ]
         # )
 
-    while config['session']['running']:
+    while Config.data['session']['running']:
 
         # Read config
-        config = utils.read_config(
-            configLoc=os.path.join(
-                config['session']['configLoc'],
-                'config.json'
+        Config = config.Handler(
+            path=os.path.join(
+                Config.data['session']['configLoc']
             )
         )
 
@@ -204,18 +191,18 @@ if __name__ == '__main__':
             if dashboard_app:
                 dashboard_app = poll(
                     app=dashboard_app,
-                    execLoc=execLoc,
-                    appLoc=os.path.join(
-                        config['session']['modulesLoc'],
+                    executable_path=EXECUTABLE,
+                    app_path=os.path.join(
+                        Config.data['session']['modulesLoc'],
                         'dashboard.py'
                     )
                 )
 
                 temp_pid_app = poll(
                     app=temp_pid_app,
-                    execLoc=execLoc,
-                    appLoc=os.path.join(
-                        config['session']['controllersLoc'],
+                    executable_path=EXECUTABLE,
+                    app_path=os.path.join(
+                        Config.data['session']['controllersLoc'],
                         'temp_pid.py'
                     )
                 )
@@ -223,23 +210,13 @@ if __name__ == '__main__':
             else:
 
                 # Terminate applications
-                config['session']['running'] = False
-                utils.write_config(
-                    configLoc=os.path.join(
-                        session['configLoc'], 'config.json'
-                    ),
-                    config=config
-                )
+                Config.data['session']['running'] = False
+                Config.write()
 
         except KeyboardInterrupt:
 
             # Terminate applications
-            config['session']['running'] = False
-            utils.write_config(
-                configLoc=os.path.join(
-                    session['configLoc'], 'config.json'
-                ),
-                config=config
-            )
+            Config.data['session']['running'] = False
+            Config.write()
 
         time.sleep(5)

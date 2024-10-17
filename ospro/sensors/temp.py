@@ -1,53 +1,44 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : temp.py
-Location    : ~/ospro/sensors
+""" Temperature controller and sensor API """
 
-Description
----------------------------------------------------------------------
-Contains the temperature sensor classes and functions.
-"""
-
-# Import modules
-import random
 import sys
+import random
 
 
-# Define temperature sensor class
+# Temperature controller
 class Controller():
+    """ A `class` that represents a temperature controller.
+
+    Parameters
+    ----------
+    output_pin: `int`
+        Pin number that identifies the pulse width modulation pin.
+    """
 
     def __init__(
         self,
-        outputPin
+        output_pin: int
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
+        """ Creates an instance of the Controller class.
 
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Controller class.
+        Parameters
+        ----------
+        output_pin: `int`
+            Pin number that identifies the pulse width modulation pin.
         """
 
         # Assign class variables
-        self.outputPin = outputPin
+        self.output_pin: int = output_pin
 
     def initialize(
         self,
-        config
+        config: dict
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
+        """ Initializes the temperature controller hardware.
 
-        Description
-        ---------------------------------------------------------------------
-        Initializes the temperature controller hardware.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         # Import sensor modules
@@ -59,7 +50,7 @@ class Controller():
             if not GPIO.getmode():
                 GPIO.setmode(GPIO.BCM)
             elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
+                print('ERROR: Invalid GPIO mode {BOARD}.')
                 sys.exit()
             else:
                 pass
@@ -69,7 +60,7 @@ class Controller():
 
             # Setup GPIO pins
             self.controller = GPIO.PWM(
-                self.outputPin,
+                self.output_pin,
                 600
             )
 
@@ -82,13 +73,7 @@ class Controller():
     def start(
         self
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Starts the duty cycle of the temperature controller class.
+        """ Starts the duty cycle of the temperature controller.
         """
 
         # Start the controller
@@ -97,13 +82,7 @@ class Controller():
     def stop(
         self
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Stops the duty cycle of the temperature controller class.
+        """ Stops the duty cycle of the temperature controller.
         """
 
         # Stop the controller
@@ -111,57 +90,56 @@ class Controller():
 
     def update_duty_cycle(
         self,
-        output
+        output: float
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        output                  = <int> Pulse width modulation output duty
-                                    cycle.
+        """ Changes the duty cycle of the temperature controller.
 
-        Description
-        ---------------------------------------------------------------------
-        Changes the duty cycle of the temperature controller class.
+        Parameters
+        ----------
+        output: `float`
+            The pulse width modulation output duty cycle.
         """
 
         # Update duty cycle
         self.controller.ChangeDutyCycle(output)
 
 
+# Temperature sensor
 class Sensor():
+    """ A `class` that represents a temperature sensor.
+
+    Parameters
+    ----------
+    output_pin: `int`
+        Pin number that identifies the pulse width modulation pin.
+    """
 
     def __init__(
         self,
-        outputPin
+        output_pin: int
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
+        """ Creates an instance of the Sensor class.
 
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Sensor class.
+        Parameters
+        ----------
+        output_pin: `int`
+            Pin number that identifies the pulse width modulation pin.
         """
 
         # Assign class variables
-        self.outputPin = outputPin
-        self.previousTemperature = None
+        self.output_pin: int = output_pin
+        # self.previousTemperature = None
 
     def initialize(
         self,
-        config
+        config: dict
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
+        """ Initializes the temperature sensor hardware.
 
-        Description
-        ---------------------------------------------------------------------
-        Initializes the temperature sensor hardware.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         # Import sensor modules
@@ -176,7 +154,7 @@ class Sensor():
             if not GPIO.getmode():
                 GPIO.setmode(GPIO.BCM)
             elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
+                print('ERROR: Invalid GPIO mode {BOARD}.')
                 sys.exit()
             else:
                 pass
@@ -186,7 +164,7 @@ class Sensor():
 
             # Setup GPIO pins
             GPIO.setup(
-                self.outputPin,
+                self.output_pin,
                 GPIO.OUT
             )
 
@@ -200,17 +178,14 @@ class Sensor():
 
     def read_temp(
         self,
-        config
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
+        config: dict
+    ) -> int:
+        """ Returns the temperature in degrees Celsius.
 
-        Description
-        ---------------------------------------------------------------------
-        Returns the water temperature in degrees Celsius.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         if config['session']['dev']:
@@ -223,56 +198,54 @@ class Sensor():
             try:
                 temperature = round(self.sensor.temperature, 2)
 
-            except RuntimeError:
-                if self.previousTemperature is not None:
-                    temperature = self.previousTemperature
-                else:
-                    print('ERROR: Unable to read temperature sensor.')
-                    sys.exit()
+            except RuntimeError as e:
+                raise RuntimeError(e)
 
-        # Evaluate error
-        if self.previousTemperature is not None:
-            if (
-                (
-                    abs(temperature - self.previousTemperature) >=
-                    config['tPID']['error']
-                )
-            ):
-                temperature = self.previousTemperature
+        #         if self.previousTemperature is not None:
+        #             temperature = self.previousTemperature
+        #         else:
+        #             print('ERROR: Unable to read temperature sensor.')
+        #             sys.exit()
 
-        # Update previous temperature
-        self.previousTemperature = temperature
+        # # Evaluate error
+        # if self.previousTemperature is not None:
+        #     if (
+        #         (
+        #             abs(temperature - self.previousTemperature) >=
+        #             config['tPID']['error']
+        #         )
+        #     ):
+        #         temperature = self.previousTemperature
+
+        # # Update previous temperature
+        # self.previousTemperature = temperature
 
         return int(temperature)
 
 
 def convert_to_c(
-    temperature
-):
-    """
-    Variables
-    ---------------------------------------------------------------------
-    temperature                 = <float> Temperature value in Fahrenheit
+    temperature: float
+) -> int:
+    """ Converts {temperature} from Fahrenheit to Celsius.
 
-    Description
-    ---------------------------------------------------------------------
-    Converts {temperature} from Fahrenheit to Celsius.
+    Parameters
+    ----------
+    temperature: `float`
+        Temperature value in Fahrenheit.
     """
 
     return int((float(temperature) - 32) * 5 / 9)
 
 
 def convert_to_f(
-    temperature
-):
-    """
-    Variables
-    ---------------------------------------------------------------------
-    temperature                 = <float> Temperature value in Celsius.
+    temperature: float
+) -> int:
+    """ Converts {temperature} from Celsius to Fahrenheit.
 
-    Description
-    ---------------------------------------------------------------------
-    Converts {temperature} from Celsius to Fahrenheit.
+    Parameters
+    ----------
+    temperature: `float`
+        Temperature value in Celsius.
     """
 
     return int((float(temperature) * 9 / 5) + 32)

@@ -1,53 +1,44 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : pressure.py
-Location    : ~/ospro/sensors
+""" Pressure controller and sensor API """
 
-Description
----------------------------------------------------------------------
-Contains the pressure sensor classes and functions.
-"""
-
-# Import modules
-import random
 import sys
+import random
 
 
-# Define temperature sensor class
+# Pressure controller
 class Controller():
+    """ A `class` that represents a pressure controller.
+
+    Parameters
+    ----------
+    output_pin: `int`
+        Pin number that identifies the pulse width modulation pin.
+    """
 
     def __init__(
         self,
-        outputPin
+        output_pin: int
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
+        """ Creates an instance of the Controller class.
 
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Controller class.
+        Parameters
+        ----------
+        output_pin: `int`
+            Pin number that identifies the pulse width modulation pin.
         """
 
         # Assign class variables
-        self.outputPin = outputPin
+        self.output_pin: int = output_pin
 
     def initialize(
         self,
-        config
+        config: dict
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
+        """ Initializes the pressure controller hardware.
 
-        Description
-        ---------------------------------------------------------------------
-        Initializes the pressure controller hardware.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         # Import sensor modules
@@ -59,7 +50,7 @@ class Controller():
             if not GPIO.getmode():
                 GPIO.setmode(GPIO.BCM)
             elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
+                print('ERROR: Invalid GPIO mode {BOARD}.')
                 sys.exit()
             else:
                 pass
@@ -69,7 +60,7 @@ class Controller():
 
             # Setup GPIO pins
             self.controller = GPIO.PWM(
-                self.outputPin,
+                self.output_pin,
                 600
             )
 
@@ -82,13 +73,7 @@ class Controller():
     def start(
         self
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Starts the duty cycle of the pressure controller class.
+        """ Starts the duty cycle of the pressure controller.
         """
 
         # Start the controller
@@ -97,13 +82,7 @@ class Controller():
     def stop(
         self
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Stops the duty cycle of the pressure controller class.
+        """ Stops the duty cycle of the pressure controller.
         """
 
         # Stop the controller
@@ -111,56 +90,55 @@ class Controller():
 
     def update_duty_cycle(
         self,
-        output
+        output: float
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        output                  = <int> Pulse width modulation output duty
-                                    cycle.
+        """ Changes the duty cycle of the pressure controller.
 
-        Description
-        ---------------------------------------------------------------------
-        Changes the duty cycle of the pressure controller class.
+        Parameters
+        ----------
+        output: `float`
+            The pulse width modulation output duty cycle.
         """
 
         # Update duty cycle
         self.controller.ChangeDutyCycle(output)
 
 
+# Pressure sensor
 class Sensor():
+    """ A `class` that represents a pressure sensor.
+
+    Parameters
+    ----------
+    output_pin: `int`
+        Pin number that identifies the pulse width modulation pin.
+    """
 
     def __init__(
         self,
-        outputPin
+        output_pin: int
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
+        """ Creates an instance of the Sensor class.
 
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Sensor class.
+        Parameters
+        ----------
+        output_pin: `int`
+            Pin number that identifies the pulse width modulation pin.
         """
 
         # Assign class variables
-        self.outputPin = outputPin
+        self.output_pin: int = output_pin
 
     def initialize(
         self,
-        config
+        config: dict
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
+        """ Initializes the pressure sensor hardware.
 
-        Description
-        ---------------------------------------------------------------------
-        Initializes the pressure sensor hardware.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         # Import sensor modules
@@ -173,7 +151,7 @@ class Sensor():
             if not GPIO.getmode():
                 GPIO.setmode(GPIO.BCM)
             elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
+                print('ERROR: Invalid GPIO mode {BOARD}.')
                 sys.exit()
             else:
                 pass
@@ -183,7 +161,7 @@ class Sensor():
 
             # Setup GPIO pins
             GPIO.setup(
-                self.outputPin,
+                self.output_pin,
                 GPIO.OUT
             )
 
@@ -197,15 +175,14 @@ class Sensor():
 
     def read_pressure(
         self,
-        config
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
+        config: dict
+    ) -> float:
+        """ Returns the pressure in bars.
 
-        Description
-        ---------------------------------------------------------------------
-        Returns the system pressure.
+        Parameters
+        ----------
+        config: `dict`
+            Dictionary object containing the application settings.
         """
 
         if config['session']['dev']:
@@ -219,7 +196,7 @@ class Sensor():
                         gain=2 / 3
                     )) - (34.0 / 7.0), 1
                 )
-            except RuntimeError:
-                pass
+            except RuntimeError as e:
+                raise RuntimeError(e)
 
-        return pressure
+        return float(pressure)

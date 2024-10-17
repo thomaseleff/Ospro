@@ -1,15 +1,5 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : dashboard.py
-Location    : ~/
+""" Dashboard UI """
 
-Description
----------------------------------------------------------------------
-Runs the GUI application.
-"""
-
-# Import modules
 import os
 import sys
 import re
@@ -54,7 +44,7 @@ if not config['session']['dev']:
     if not GPIO.getmode():
         GPIO.setmode(GPIO.BCM)
     elif GPIO.getmode() == 10:
-        print('ERROR: Invalid GPIO mode (BOARD).')
+        print('ERROR: Invalid GPIO mode {BOARD}.')
         sys.exit()
     else:
         pass
@@ -70,13 +60,13 @@ if not config['session']['dev']:
 
 # Initialize temperatore sensor
 tSensor = temp.Sensor(
-    outputPin=config['tPID']['pin']
+    output_pin=config['tPID']['pin']
 )
 tSensor.initialize(config)
 
 # Initialize pressure sensor
 pSensor = pressure.Sensor(
-    outputPin=config['pPID']['pin']
+    output_pin=config['pPID']['pin']
 )
 pSensor.initialize(config)
 
@@ -1582,7 +1572,7 @@ def delete_callback(
     tkProfile.set(
         textwrap.shorten(
             str(config['settings']['profile']),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
@@ -1737,7 +1727,7 @@ def profile_callback(
     tkProfile.set(
         textwrap.shorten(
             str(value).strip(),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
@@ -4223,7 +4213,7 @@ if __name__ == '__main__':
     tkProfile.set(
         textwrap.shorten(
             str(config['settings']['profile']),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
