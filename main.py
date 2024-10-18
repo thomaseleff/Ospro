@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import subprocess
-import logging
+from ospro import logging
 from pytensils import config
 
 # Initialize global variables
@@ -137,14 +137,7 @@ def poll(
 if __name__ == '__main__':
 
     # Setup logging
-    Logging = logging.getLogger('ospro')
-    Logging.setLevel(level=logging.DEBUG)
-    debugger = logging.StreamHandler()
-    debugger.setLevel(level=logging.DEBUG)
-    debugger.setFormatter(
-        fmt=logging.Formatter('[ospro] %(message)s')
-    )
-    Logging.addHandler(hdlr=debugger)
+    Logging = logging.get_ospro_logger()
 
     # Initialize the application
     Config = initialize(session_object=SESSION, Logging=Logging)
