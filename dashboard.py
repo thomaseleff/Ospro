@@ -47,8 +47,7 @@ except exceptions.InvalidPlatformError:
 # Setup the interface
 GPIO.setup(
     config['extraction']['pin'],
-    GPIO.IN,
-    pull_up_down=GPIO.PUD_DOWN
+    GPIO.OUT
 )
 
 # Initialize temperatore sensor
