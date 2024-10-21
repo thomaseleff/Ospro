@@ -15,7 +15,7 @@ except ImportError:
     )
 
 
-class Interface(GPIO):
+def Interface():
     """ Represents the Raspberry-Pi general-purpose input / output interface.
     """
-    pass
+    return GPIO
