@@ -1,202 +1,102 @@
-""" Pressure controller and sensor API """
+""" Pressure sensor-API
 
-import sys
+Sensor
+------
+Pressure transducer 1/8 IN NPT thread stainless steel (500 PSI)
+- Measures 0 to 500 psi output in 1 psi increments
+  - ±0.5% psi in accuracy
+- 5v power supply and logic level compliant
+- 0.5v - 4.5v linear voltage output,
+  - 0 psi outputs 0.5v
+  - 500 psi outputs 4.5v
+"""
+
 import random
+from ospro.platform import factory
+
+# Assign the minimum pressure sensor accuracy
+#   for the pressure sensor hardware
+ACCURACY: float = 0.344738
+MIN: int = 0
+MAX: int = 500
+RANDOM_SEED: int = 9
 
 
-# Pressure controller
-class Controller():
-    """ A `class` that represents a pressure controller.
-
-    Parameters
-    ----------
-    output_pin: `int`
-        Pin number that identifies the pulse width modulation pin.
-    """
-
-    def __init__(
-        self,
-        output_pin: int
-    ):
-        """ Creates an instance of the Controller class.
-
-        Parameters
-        ----------
-        output_pin: `int`
-            Pin number that identifies the pulse width modulation pin.
-        """
-
-        # Assign class variables
-        self.output_pin: int = output_pin
-
-    def initialize(
-        self,
-        config: dict
-    ):
-        """ Initializes the pressure controller hardware.
-
-        Parameters
-        ----------
-        config: `dict`
-            Dictionary object containing the application settings.
-        """
-
-        # Import sensor modules
-        if not config['session']['dev']:
-
-            import RPi.GPIO as GPIO
-
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode {BOARD}.')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            self.controller = GPIO.PWM(
-                self.output_pin,
-                600
-            )
-
-            # Start the controller
-            self.controller.start(0)
-
-        else:
-            self.controller = False
-
-    def start(
-        self
-    ):
-        """ Starts the duty cycle of the pressure controller.
-        """
-
-        # Start the controller
-        self.controller.start(0)
-
-    def stop(
-        self
-    ):
-        """ Stops the duty cycle of the pressure controller.
-        """
-
-        # Stop the controller
-        self.controller.stop()
-
-    def update_duty_cycle(
-        self,
-        output: float
-    ):
-        """ Changes the duty cycle of the pressure controller.
-
-        Parameters
-        ----------
-        output: `float`
-            The pulse width modulation output duty cycle.
-        """
-
-        # Update duty cycle
-        self.controller.ChangeDutyCycle(output)
-
-
-# Pressure sensor
 class Sensor():
     """ A `class` that represents a pressure sensor.
 
     Parameters
     ----------
-    output_pin: `int`
-        Pin number that identifies the pulse width modulation pin.
+    dev: `bool`
+        `True` or `False`, whether dev-mode is enabled.
     """
 
     def __init__(
         self,
-        output_pin: int
+        dev: bool
     ):
-        """ Creates an instance of the Sensor class.
+        """ Creates an instance of the pressure sensor.
 
         Parameters
         ----------
-        output_pin: `int`
-            Pin number that identifies the pulse width modulation pin.
+        dev: `bool`
+            `True` or `False`, whether dev-mode is enabled.
         """
 
         # Assign class variables
-        self.output_pin: int = output_pin
-
-    def initialize(
-        self,
-        config: dict
-    ):
-        """ Initializes the pressure sensor hardware.
-
-        Parameters
-        ----------
-        config: `dict`
-            Dictionary object containing the application settings.
-        """
+        self.dev: bool = dev
 
         # Import sensor modules
-        if not config['session']['dev']:
+        if not dev:
 
-            import RPi.GPIO as GPIO
             import Adafruit_ADS1x15 as adafruit
 
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode {BOARD}.')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            GPIO.setup(
-                self.output_pin,
-                GPIO.OUT
-            )
+            # Load the raspberry-pi platform interface
+            _ = factory.load_interface(dev=dev)
 
             # Initialize sensors
             self.sensor = adafruit.ADS1115(
                 address=0x48,
                 busnum=1
             )
-        else:
-            self.sensor = False
 
-    def read_pressure(
+        else:
+            self.sensor = None
+
+    def read(
         self,
-        config: dict
+        set_point: int = RANDOM_SEED
     ) -> float:
         """ Returns the pressure in bars.
 
         Parameters
         ----------
-        config: `dict`
-            Dictionary object containing the application settings.
+        set_point: `int`
+            The set-point in bars of the system.
+                Used for generating random pressure values when {dev} = `True`.
         """
 
-        if config['session']['dev']:
-            pressure = float(random.randint(80, 90) / 10)
+        if self.dev:
+            pressure = float(
+                random.randint(
+                    set_point - 10 * 10,
+                    set_point + 10 * 10
+                ) / 10
+            )
         else:
             try:
                 pressure = round(
-                    (3.0 / 1750) *
-                    (self.sensor.read_adc(
-                        0,
-                        gain=2 / 3
-                    )) - (34.0 / 7.0), 1
+                    (3.0 / 1750)
+                    * (
+                        self.sensor.read_adc(
+                            0,
+                            gain=2 / 3
+                        )
+                    )
+                    - (34.0 / 7.0),
+                    1
                 )
             except RuntimeError as e:
                 raise RuntimeError(e)
 
-        return float(pressure)
+        return abs(float(pressure))

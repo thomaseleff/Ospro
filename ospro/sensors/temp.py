@@ -1,224 +1,91 @@
-""" Temperature controller and sensor API """
+""" Temperature sensor-API
 
-import sys
+Sensor
+------
+Adafruit MAX31855
+- Compatible with K-type thermocouples
+- Measures -200°C to +1350°C output in 0.25 degree increments
+  - K-type thermocouples typically range from ±2°C to ±6°C in accuracy
+- 3.3 to 5v power supply and logic level compliant
+"""
+
 import random
+from ospro.platform import factory
+
+# Assign the minimum temperature sensor accuracy
+#   for the temperature sensor hardware
+ACCURACY: int = 3
+MIN: int = 0
+MAX: int = 600
+RANDOM_SEED: int = 93
 
 
-# Temperature controller
-class Controller():
-    """ A `class` that represents a temperature controller.
-
-    Parameters
-    ----------
-    output_pin: `int`
-        Pin number that identifies the pulse width modulation pin.
-    """
-
-    def __init__(
-        self,
-        output_pin: int
-    ):
-        """ Creates an instance of the Controller class.
-
-        Parameters
-        ----------
-        output_pin: `int`
-            Pin number that identifies the pulse width modulation pin.
-        """
-
-        # Assign class variables
-        self.output_pin: int = output_pin
-
-    def initialize(
-        self,
-        config: dict
-    ):
-        """ Initializes the temperature controller hardware.
-
-        Parameters
-        ----------
-        config: `dict`
-            Dictionary object containing the application settings.
-        """
-
-        # Import sensor modules
-        if not config['session']['dev']:
-
-            import RPi.GPIO as GPIO
-
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode {BOARD}.')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            self.controller = GPIO.PWM(
-                self.output_pin,
-                600
-            )
-
-            # Start the controller
-            self.controller.start(0)
-
-        else:
-            self.controller = False
-
-    def start(
-        self
-    ):
-        """ Starts the duty cycle of the temperature controller.
-        """
-
-        # Start the controller
-        self.controller.start(0)
-
-    def stop(
-        self
-    ):
-        """ Stops the duty cycle of the temperature controller.
-        """
-
-        # Stop the controller
-        self.controller.stop()
-
-    def update_duty_cycle(
-        self,
-        output: float
-    ):
-        """ Changes the duty cycle of the temperature controller.
-
-        Parameters
-        ----------
-        output: `float`
-            The pulse width modulation output duty cycle.
-        """
-
-        # Update duty cycle
-        self.controller.ChangeDutyCycle(output)
-
-
-# Temperature sensor
 class Sensor():
     """ A `class` that represents a temperature sensor.
 
     Parameters
     ----------
-    output_pin: `int`
-        Pin number that identifies the pulse width modulation pin.
+    dev: `bool`
+        `True` or `False`, whether dev-mode is enabled.
     """
 
     def __init__(
         self,
-        output_pin: int
+        dev: bool
     ):
-        """ Creates an instance of the Sensor class.
+        """ Creates an instance of the temperature sensor.
 
         Parameters
         ----------
-        output_pin: `int`
-            Pin number that identifies the pulse width modulation pin.
+        dev: `bool`
+            `True` or `False`, whether dev-mode is enabled.
         """
 
         # Assign class variables
-        self.output_pin: int = output_pin
-        # self.previousTemperature = None
-
-    def initialize(
-        self,
-        config: dict
-    ):
-        """ Initializes the temperature sensor hardware.
-
-        Parameters
-        ----------
-        config: `dict`
-            Dictionary object containing the application settings.
-        """
+        self.dev: bool = dev
 
         # Import sensor modules
-        if not config['session']['dev']:
+        if not dev:
 
             import board
             import digitalio
-            import RPi.GPIO as GPIO
             import adafruit_max31855
 
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode {BOARD}.')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            GPIO.setup(
-                self.output_pin,
-                GPIO.OUT
-            )
+            # Load the raspberry-pi platform interface
+            _ = factory.load_interface(dev=dev)
 
             # Initialize sensors
             self.sensor = adafruit_max31855.MAX31855(
                 board.SPI(),
                 digitalio.DigitalInOut(board.D5)
             )
-        else:
-            self.sensor = False
 
-    def read_temp(
+        else:
+            self.sensor = None
+
+    def read(
         self,
-        config: dict
+        set_point: int = RANDOM_SEED
     ) -> int:
         """ Returns the temperature in degrees Celsius.
 
         Parameters
         ----------
-        config: `dict`
-            Dictionary object containing the application settings.
+        set_point: `int`
+            The set-point in degrees Celcius of the system.
+                Used for generating random temperatures when {dev} = `True`.
         """
 
-        if config['session']['dev']:
+        if self.dev:
             temperature = random.randint(
-                int(config['tPID']['setPoint'] * 0.95),
-                int(config['tPID']['setPoint'] * 1.02)
+                int(set_point * 0.95),
+                int(set_point * 1.02)
             )
-
         else:
             try:
-                temperature = round(self.sensor.temperature, 2)
-
+                temperature = round(self.sensor.temperature, 0)
             except RuntimeError as e:
                 raise RuntimeError(e)
-
-        #         if self.previousTemperature is not None:
-        #             temperature = self.previousTemperature
-        #         else:
-        #             print('ERROR: Unable to read temperature sensor.')
-        #             sys.exit()
-
-        # # Evaluate error
-        # if self.previousTemperature is not None:
-        #     if (
-        #         (
-        #             abs(temperature - self.previousTemperature) >=
-        #             config['tPID']['error']
-        #         )
-        #     ):
-        #         temperature = self.previousTemperature
-
-        # # Update previous temperature
-        # self.previousTemperature = temperature
 
         return int(temperature)
 
@@ -233,7 +100,6 @@ def convert_to_c(
     temperature: `float`
         Temperature value in Fahrenheit.
     """
-
     return int((float(temperature) - 32) * 5 / 9)
 
 
@@ -247,5 +113,4 @@ def convert_to_f(
     temperature: `float`
         Temperature value in Celsius.
     """
-
     return int((float(temperature) * 9 / 5) + 32)
