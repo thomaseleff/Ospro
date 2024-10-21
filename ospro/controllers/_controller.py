@@ -37,6 +37,12 @@ class GenericController():
         GPIO = factory.load_interface(dev=dev)
 
         # Setup the platform interface for the controller
+        GPIO.setup(
+            self.output_pin,
+            GPIO.OUT
+        )
+
+        # Create a pulse-width modulation controller
         self.controller = GPIO.PWM(
             self.output_pin,
             600
