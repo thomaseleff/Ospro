@@ -64,11 +64,10 @@ if __name__ == '__main__':
     previous_error = 0
 
     # Set intitial pulse-width modulation output
-    if not Config.data['session']['dev']:
-        tController = tc.Controller(
-            dev=Config.data['session']['dev'],
-            output_pin=Config.data['tPID']['pin']
-        )
+    tController = tc.Controller(
+        dev=Config.data['session']['dev'],
+        output_pin=Config.data['tPID']['pin']
+    )
 
     # Startup delay
     time.sleep(0.001)
@@ -234,15 +233,12 @@ if __name__ == '__main__':
                     )
                 )
 
-            # Set pulse-width modulation output
-            if not Config.data['session']['dev']:
+            # Set default during extraction
+            if GPIO.input(Config.data['extraction']['pin']):
+                output = 10
 
-                # Set default during extraction
-                if GPIO.input(Config.data['extraction']['pin']):
-                    output = 10
-
-                # Update the duty-cycle
-                tController.update_duty_cycle(output)
+            # Update the duty-cycle
+            tController.update_duty_cycle(output)
 
             # Recalculate time delta for delay
             delta_time = (time.time() - previous_time)
@@ -257,14 +253,12 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
 
         # Terminate pulse-width modulation & cleanup
-        if not Config.data['session']['dev']:
-            tController.stop()
-            GPIO.cleanup()
+        tController.stop()
+        GPIO.cleanup()
 
         # Exit
         sys.exit()
 
     # Terminate pulse-width modulation & cleanup
-    if not Config.data['session']['dev']:
-        tController.stop()
-        GPIO.cleanup()
+    tController.stop()
+    GPIO.cleanup()

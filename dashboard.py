@@ -982,11 +982,11 @@ def start(
     extracting = True
     flashing = False
 
-    if not config['session']['dev']:
-        GPIO.output(
-            config['extraction']['pin'],
-            GPIO.HIGH
-        )
+    # Setup the interface
+    GPIO.output(
+        config['extraction']['pin'],
+        GPIO.HIGH
+    )
 
     # Update application omponents
     labelCounter.configure(text_color=theme['CTkLabel']['text_color'])
@@ -1201,11 +1201,11 @@ def stop(
     extracting = False
     flashing = True
 
-    if not config['session']['dev']:
-        GPIO.output(
-            config['extraction']['pin'],
-            GPIO.LOW
-        )
+    # Setup the interface
+    GPIO.output(
+        config['extraction']['pin'],
+        GPIO.LOW
+    )
 
     # Update application omponents
     buttonStart.configure(state='normal')
@@ -4497,8 +4497,7 @@ if __name__ == '__main__':
             root.quit()
 
             # Cleanup
-            if not config['session']['dev']:
-                GPIO.cleanup()
+            GPIO.cleanup()
 
             # Exit
             sys.exit()
@@ -4507,5 +4506,4 @@ if __name__ == '__main__':
     root.quit()
 
     # Cleanup
-    if not config['session']['dev']:
-        GPIO.cleanup()
+    GPIO.cleanup()

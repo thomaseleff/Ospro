@@ -46,7 +46,7 @@ class Interface(AbstractInterface):
         value: `Union[int, bool]`
             Either HIGH or LOW or True (HIGH) or False (LOW).
         """
-        if channel in self.channels[channel]:
+        if channel in self.channels:
             _pin = Pin(
                 mode=self.channels[channel].mode,
                 pull_up_down=self.channels[channel].pull_up_down,
