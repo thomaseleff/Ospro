@@ -4,7 +4,7 @@
         "last": "Eleff"
     },
     "session": {
-        "dev": false,
+        "dev": true,
         "running": false,
         "dashboard": true,
         "tempPID": true,

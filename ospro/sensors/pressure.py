@@ -46,13 +46,13 @@ class Sensor():
         # Assign class variables
         self.dev: bool = dev
 
+        # Load the raspberry-pi platform interface
+        _ = factory.load_interface(dev=dev)
+
         # Import sensor modules
         if not dev:
 
             import Adafruit_ADS1x15 as adafruit
-
-            # Load the raspberry-pi platform interface
-            _ = factory.load_interface(dev=dev)
 
             # Initialize sensors
             self.sensor = adafruit.ADS1115(

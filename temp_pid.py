@@ -4,9 +4,8 @@ import os
 import sys
 import time
 import copy
-import errno
 from pytensils import config
-from ospro import logging
+from ospro import logging, exceptions, errors
 from ospro.platform import factory
 from ospro.sensors import temp as ts
 from ospro.controllers import temp as tc
@@ -39,9 +38,12 @@ if __name__ == '__main__':
         Logging.debug('NOTE: Config validation completed successfully.')
 
     # Load the platform interface
-    GPIO = factory.load_interface(
-        dev=Config.data['session']['dev']
-    )
+    try:
+        GPIO = factory.load_interface(
+            dev=Config.data['session']['dev']
+        )
+    except exceptions.InvalidPlatformError:
+        sys.exit(errors.PLATFORM_ERRNO)
 
     # Setup the interface
     GPIO.setup(
@@ -87,7 +89,7 @@ if __name__ == '__main__':
                     set_point=Config.data['tPID']['setPoint']
                 )
             except RuntimeError:
-                sys.exit(errno.EIO)
+                sys.exit(errors.INTERFACE_ERRNO)
 
             # Pass if temperature is unstable
             if (

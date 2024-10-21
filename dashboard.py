@@ -15,6 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.stats import pearsonr
 from PIL import Image
 
+from ospro import exceptions, errors
 from ospro.platform import factory
 from ospro.sensors import temp as ts
 from ospro.sensors import pressure as ps
@@ -36,9 +37,12 @@ config = utils.read_config(
 )
 
 # Load the platform interface
-GPIO = factory.load_interface(
-    dev=config['session']['dev']
-)
+try:
+    GPIO = factory.load_interface(
+        dev=config['session']['dev']
+    )
+except exceptions.InvalidPlatformError:
+    sys.exit(errors.PLATFORM_ERRNO)
 
 # Setup the interface
 GPIO.setup(

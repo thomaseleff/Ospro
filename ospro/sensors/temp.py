@@ -44,15 +44,15 @@ class Sensor():
         # Assign class variables
         self.dev: bool = dev
 
+        # Load the raspberry-pi platform interface
+        _ = factory.load_interface(dev=dev)
+
         # Import sensor modules
         if not dev:
 
             import board
             import digitalio
             import adafruit_max31855
-
-            # Load the raspberry-pi platform interface
-            _ = factory.load_interface(dev=dev)
 
             # Initialize sensors
             self.sensor = adafruit_max31855.MAX31855(

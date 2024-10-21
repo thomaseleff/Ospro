@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import subprocess
-from ospro import logging
+from ospro import logging, errors
 from pytensils import config
 
 # Initialize global variables
@@ -118,6 +118,19 @@ def poll(
 
     if app.poll() is None:
         pass
+
+    elif app.returncode in errors.FATAL:
+        app = False
+
+        # Logging
+        Logging.error(
+            ' '.join([
+                '%sERROR: Invalid platform.' % (logging.COLORS['red']),
+                'The {raspberry-pi} platform is only available',
+                'on ARM-architecture.%s' % (logging.RESET)
+            ])
+        )
+
     elif app.returncode > 0:
 
         # Restart
