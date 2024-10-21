@@ -10,3 +10,4 @@ __pycache__
 /ospro/archive
 /pcb-board/archive
 /simulation/archive
+testing.py
