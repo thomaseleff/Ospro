@@ -98,6 +98,40 @@ fn apply_actions(
     None
 }
 
+fn force_cleanup_actuators(
+    extraction: &mut Option<ExtractionActuator<DynGpio>>,
+    heater: &mut Option<PwmActuator<DynPwm>>,
+    pump: &mut Option<PwmActuator<DynPwm>>,
+    heater_started: &mut bool,
+    pump_started: &mut bool,
+) -> Option<HardwareError> {
+    if let Some(actuator) = heater.as_mut() {
+        if *heater_started {
+            if let Err(error) = actuator.stop() {
+                return Some(error);
+            }
+        }
+        *heater_started = false;
+    }
+    if let Some(actuator) = pump.as_mut() {
+        if *pump_started {
+            if let Err(error) = actuator.stop() {
+                return Some(error);
+            }
+        }
+        *pump_started = false;
+    }
+    if let Some(actuator) = extraction.as_mut() {
+        if let Err(error) = actuator.stop() {
+            return Some(error);
+        }
+        if let Err(error) = actuator.cleanup() {
+            return Some(error);
+        }
+    }
+    None
+}
+
 fn spawn_runtime_supervisor(
     config: RuntimeConfig,
     hardware: HardwareBackend,
@@ -201,7 +235,15 @@ fn run_runtime_loop(
             &mut heater_started,
             &mut pump_started,
         ) {
-            let _ = control.handle_event(Event::FaultDetected(error));
+            let fault_actions = control.handle_event(Event::FaultDetected(error));
+            let _ = apply_actions(
+                &fault_actions,
+                &mut extraction,
+                &mut heater,
+                &mut pump,
+                &mut heater_started,
+                &mut pump_started,
+            );
         }
 
         if matches!(control.state(), BrewState::Done | BrewState::Fault) {
@@ -225,6 +267,14 @@ fn run_runtime_loop(
             last_update = Instant::now();
         }
     }
+
+    let _ = force_cleanup_actuators(
+        &mut extraction,
+        &mut heater,
+        &mut pump,
+        &mut heater_started,
+        &mut pump_started,
+    );
 }
 
 fn persist_extraction_artifacts(
@@ -451,6 +501,37 @@ mod tests {
 
         let error = apply_actions(
             &actions,
+            &mut extraction,
+            &mut heater,
+            &mut pump,
+            &mut heater_started,
+            &mut pump_started,
+        );
+        assert!(error.is_none());
+    }
+
+    #[test]
+    fn force_cleanup_actuators_stops_and_cleans_up() {
+        let backend = HardwareBackend::mock();
+        let mut extraction = ExtractionActuator::new(backend.create_gpio(), 23).ok();
+        let mut heater = PwmActuator::new(backend.create_pwm(), 25, 1.0).ok();
+        let mut pump = PwmActuator::new(backend.create_pwm(), 24, 1.0).ok();
+        let mut heater_started = false;
+        let mut pump_started = false;
+        let _ = apply_actions(
+            &[
+                Action::StartExtractionOutput,
+                Action::SetHeaterDuty(20.0),
+                Action::SetPumpDuty(30.0),
+            ],
+            &mut extraction,
+            &mut heater,
+            &mut pump,
+            &mut heater_started,
+            &mut pump_started,
+        );
+
+        let error = force_cleanup_actuators(
             &mut extraction,
             &mut heater,
             &mut pump,
