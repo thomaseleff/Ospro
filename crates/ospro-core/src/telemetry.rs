@@ -19,6 +19,8 @@ impl TelemetryRuntime {
         pressures: &[f64],
         path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let max_len = temperatures.len().max(pressures.len()).max(1) as f32;
+
         let root = BitMapBackend::new(path, (800, 600)).into_drawing_area();
         root.fill(&WHITE)?;
 
@@ -27,7 +29,7 @@ impl TelemetryRuntime {
             .margin(5)
             .x_label_area_size(30)
             .y_label_area_size(30)
-            .build_cartesian_2d(0f32..temperatures.len() as f32, 0f32..100f32)?;
+            .build_cartesian_2d(0f32..max_len, 0f32..100f32)?;
 
         chart.configure_mesh().draw()?;
 
@@ -68,5 +70,44 @@ impl TelemetryRuntime {
 impl Default for TelemetryRuntime {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_chart_path(name: &str) -> PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("ospro-{name}-{stamp}.png"))
+    }
+
+    #[test]
+    fn generate_chart_handles_empty_series() {
+        let telemetry = TelemetryRuntime::new();
+        let path = temp_chart_path("empty");
+
+        let result = telemetry.generate_chart(&[], &[], &path);
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn generate_chart_handles_short_series() {
+        let telemetry = TelemetryRuntime::new();
+        let path = temp_chart_path("short");
+
+        let result = telemetry.generate_chart(&[92.0, 93.0, 94.0], &[2.0, 7.0, 9.0], &path);
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        let _ = std::fs::remove_file(path);
     }
 }
