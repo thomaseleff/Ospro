@@ -14,6 +14,11 @@ slint! {
         in property <float> pressure: 9.0;
         in property <duration> timer: 0ms;
         in property <image> chart-image;
+        in property <bool> review-visible: false;
+        in property <string> review-profile: "";
+        in property <string> review-duration: "";
+        in property <string> review-temp-range: "";
+        in property <string> review-pressure-range: "";
 
         callback start-brew();
         callback stop-brew();
@@ -49,6 +54,16 @@ slint! {
                 width: 640px;
                 height: 240px;
             }
+
+            VerticalLayout {
+                visible: review-visible;
+                spacing: 6px;
+                Text { text: "Last Extraction Review"; font-size: 20px; }
+                Text { text: "Profile: {review-profile}"; font-size: 16px; }
+                Text { text: "Duration: {review-duration}"; font-size: 16px; }
+                Text { text: "Temp Range: {review-temp-range}"; font-size: 16px; }
+                Text { text: "Pressure Range: {review-pressure-range}"; font-size: 16px; }
+            }
         }
     }
 }
@@ -67,6 +82,11 @@ pub struct StateUpdate {
     pub pressure: f64,
     pub timer_ms: u64,
     pub chart_path: Option<String>,
+    pub review_visible: bool,
+    pub review_profile: String,
+    pub review_duration: String,
+    pub review_temp_range: String,
+    pub review_pressure_range: String,
 }
 
 pub struct UiRuntime {
@@ -103,6 +123,11 @@ impl UiRuntime {
                     app.set_temperature(update.temperature as f32);
                     app.set_pressure(update.pressure as f32);
                     app.set_timer(update.timer_ms as i64);
+                    app.set_review_visible(update.review_visible);
+                    app.set_review_profile(update.review_profile.into());
+                    app.set_review_duration(update.review_duration.into());
+                    app.set_review_temp_range(update.review_temp_range.into());
+                    app.set_review_pressure_range(update.review_pressure_range.into());
                     if let Some(path) = update.chart_path {
                         if let Ok(image) = slint::Image::load_from_path(std::path::Path::new(&path))
                         {
@@ -148,6 +173,11 @@ mod tests {
                 pressure: 9.0,
                 timer_ms: 1000,
                 chart_path: None,
+                review_visible: false,
+                review_profile: String::new(),
+                review_duration: String::new(),
+                review_temp_range: String::new(),
+                review_pressure_range: String::new(),
             })
             .unwrap();
         let event = event_rx.try_recv();

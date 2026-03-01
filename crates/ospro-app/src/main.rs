@@ -249,6 +249,7 @@ fn run_runtime_loop(
     let mut temperatures = Vec::<f64>::new();
     let mut pressures = Vec::<f64>::new();
     let mut latest_chart_path: Option<String> = None;
+    let mut latest_review: Option<ExtractionReview> = None;
     let readings = Readings {
         temperature_c: 93.0,
         pressure_bar: 9.0,
@@ -270,6 +271,7 @@ fn run_runtime_loop(
                 temperatures.clear();
                 pressures.clear();
                 latest_chart_path = None;
+                latest_review = None;
                 actions.extend(control.handle_event(Event::Reset));
             }
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
@@ -288,8 +290,12 @@ fn run_runtime_loop(
 
         for action in &actions {
             if matches!(action, Action::SaveData) {
-                latest_chart_path =
-                    persist_extraction_artifacts(&config, &temperatures, &pressures);
+                if let Some(review) =
+                    persist_extraction_artifacts(&config, &temperatures, &pressures)
+                {
+                    latest_chart_path = Some(review.chart_path.clone());
+                    latest_review = Some(review);
+                }
             }
         }
         if let Some(error) = apply_actions(
@@ -327,6 +333,23 @@ fn run_runtime_loop(
                 pressure: readings.pressure_bar,
                 timer_ms,
                 chart_path: latest_chart_path.take(),
+                review_visible: latest_review.is_some(),
+                review_profile: latest_review
+                    .as_ref()
+                    .map(|review| review.profile.clone())
+                    .unwrap_or_default(),
+                review_duration: latest_review
+                    .as_ref()
+                    .map(|review| review.duration.clone())
+                    .unwrap_or_default(),
+                review_temp_range: latest_review
+                    .as_ref()
+                    .map(|review| review.temp_range.clone())
+                    .unwrap_or_default(),
+                review_pressure_range: latest_review
+                    .as_ref()
+                    .map(|review| review.pressure_range.clone())
+                    .unwrap_or_default(),
             };
             let _ = update_tx.send(update);
             last_update = Instant::now();
@@ -346,7 +369,7 @@ fn persist_extraction_artifacts(
     config: &RuntimeConfig,
     temperatures: &[f64],
     pressures: &[f64],
-) -> Option<String> {
+) -> Option<ExtractionReview> {
     let telemetry = TelemetryRuntime::new();
     let diagnostics_dir = PathBuf::from(&config.session.diagnostics_path);
     if fs::create_dir_all(&diagnostics_dir).is_err() {
@@ -395,7 +418,47 @@ fn persist_extraction_artifacts(
         return None;
     }
 
-    Some(png_path.to_string_lossy().to_string())
+    let duration = samples
+        .last()
+        .map(|sample| sample.duration_s)
+        .unwrap_or(0.0);
+    let min_temp = samples
+        .iter()
+        .map(|sample| sample.temperature)
+        .reduce(f64::min)
+        .unwrap_or(0.0);
+    let max_temp = samples
+        .iter()
+        .map(|sample| sample.temperature)
+        .reduce(f64::max)
+        .unwrap_or(0.0);
+    let min_pressure = samples
+        .iter()
+        .map(|sample| sample.pressure)
+        .reduce(f64::min)
+        .unwrap_or(0.0);
+    let max_pressure = samples
+        .iter()
+        .map(|sample| sample.pressure)
+        .reduce(f64::max)
+        .unwrap_or(0.0);
+
+    Some(ExtractionReview {
+        chart_path: png_path.to_string_lossy().to_string(),
+        profile: config.settings.profile.clone(),
+        duration: format!("{duration:.1}s"),
+        temp_range: format!("{min_temp:.1}..{max_temp:.1} {}", config.settings.scale),
+        pressure_range: format!("{min_pressure:.1}..{max_pressure:.1} bar"),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExtractionReview {
+    chart_path: String,
+    profile: String,
+    duration: String,
+    temp_range: String,
+    pressure_range: String,
 }
 
 fn profile_target_value(config: &RuntimeConfig, duration_s: f64) -> f64 {
