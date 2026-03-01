@@ -1,8 +1,16 @@
 use plotters::prelude::*;
+use std::io::Write;
 use std::path::Path;
 
 /// Telemetry runtime facade for extraction/session reporting.
 pub struct TelemetryRuntime;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ExtractionSample {
+    pub duration_s: f64,
+    pub temperature: f64,
+    pub pressure: f64,
+}
 
 impl TelemetryRuntime {
     pub fn new() -> Self {
@@ -65,6 +73,23 @@ impl TelemetryRuntime {
 
         Ok(())
     }
+
+    pub fn write_extraction_csv(
+        &self,
+        samples: &[ExtractionSample],
+        path: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = std::fs::File::create(path)?;
+        writeln!(file, "Duration,Temperature,Pressure")?;
+        for sample in samples {
+            writeln!(
+                file,
+                "{:.1},{:.2},{:.2}",
+                sample.duration_s, sample.temperature, sample.pressure
+            )?;
+        }
+        Ok(())
+    }
 }
 
 impl Default for TelemetryRuntime {
@@ -109,5 +134,45 @@ mod tests {
         assert!(path.exists());
 
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn write_extraction_csv_handles_empty_and_short_series() {
+        let telemetry = TelemetryRuntime::new();
+
+        let empty_path = temp_chart_path("empty-csv").with_extension("csv");
+        telemetry
+            .write_extraction_csv(&[], &empty_path)
+            .expect("empty csv write should succeed");
+        let empty_contents =
+            std::fs::read_to_string(&empty_path).expect("empty csv should be readable");
+        assert!(empty_contents.starts_with("Duration,Temperature,Pressure"));
+        let _ = std::fs::remove_file(empty_path);
+
+        let short_path = temp_chart_path("short-csv").with_extension("csv");
+        let samples = [
+            ExtractionSample {
+                duration_s: 0.0,
+                temperature: 92.0,
+                pressure: 2.0,
+            },
+            ExtractionSample {
+                duration_s: 0.1,
+                temperature: 93.0,
+                pressure: 7.0,
+            },
+            ExtractionSample {
+                duration_s: 0.2,
+                temperature: 94.0,
+                pressure: 9.0,
+            },
+        ];
+        telemetry
+            .write_extraction_csv(&samples, &short_path)
+            .expect("short csv write should succeed");
+        let short_contents =
+            std::fs::read_to_string(&short_path).expect("short csv should be readable");
+        assert!(short_contents.lines().count() >= 4);
+        let _ = std::fs::remove_file(short_path);
     }
 }

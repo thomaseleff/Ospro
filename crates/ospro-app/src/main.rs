@@ -3,11 +3,13 @@
 use ospro_core::config::RuntimeConfig;
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
 use ospro_core::hardware::HardwareBackend;
-use ospro_core::telemetry::TelemetryRuntime;
+use ospro_core::telemetry::{ExtractionSample, TelemetryRuntime};
 use ospro_core::ui::{StateUpdate, UiEvent, UiRuntime};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 fn main() {
     let config = RuntimeConfig::default();
@@ -18,9 +20,13 @@ fn main() {
     let running_loop = Arc::clone(&running);
 
     let _runtime_thread = std::thread::spawn(move || {
-        let mut control = ControlEngine::new(config);
+        let mut control = ControlEngine::new(config.clone());
         let mut shot_start: Option<Instant> = None;
         let mut last_update = Instant::now();
+        let mut sample_index: u64 = 0;
+        let mut temperatures = Vec::<f64>::new();
+        let mut pressures = Vec::<f64>::new();
+        let mut latest_chart_path: Option<String> = None;
         let readings = Readings {
             temperature_c: 93.0,
             pressure_bar: 9.0,
@@ -32,6 +38,9 @@ fn main() {
             match event_rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(UiEvent::StartBrew) => {
                     shot_start = Some(Instant::now());
+                    sample_index = 0;
+                    temperatures.clear();
+                    pressures.clear();
                     actions.extend(control.handle_event(Event::StartExtraction));
                 }
                 Ok(UiEvent::StopBrew) => {
@@ -39,6 +48,10 @@ fn main() {
                 }
                 Ok(UiEvent::Reset) => {
                     shot_start = None;
+                    sample_index = 0;
+                    temperatures.clear();
+                    pressures.clear();
+                    latest_chart_path = None;
                     actions.extend(control.handle_event(Event::Reset));
                 }
                 Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
@@ -46,6 +59,26 @@ fn main() {
             }
 
             actions.extend(control.tick(readings.clone(), Instant::now()));
+
+            if matches!(
+                control.state(),
+                BrewState::Preinfusion | BrewState::Extraction
+            ) {
+                temperatures.push(readings.temperature_c);
+                pressures.push(readings.pressure_bar);
+                sample_index = sample_index.saturating_add(1);
+            }
+
+            for action in &actions {
+                if matches!(action, Action::SaveData) {
+                    latest_chart_path = persist_extraction_artifacts(
+                        &config,
+                        &temperatures,
+                        &pressures,
+                        sample_index,
+                    );
+                }
+            }
 
             if matches!(control.state(), BrewState::Done | BrewState::Fault) {
                 shot_start = None;
@@ -62,7 +95,7 @@ fn main() {
                     temperature: readings.temperature_c,
                     pressure: readings.pressure_bar,
                     timer_ms,
-                    chart_path: None,
+                    chart_path: latest_chart_path.take(),
                 };
                 let _ = update_tx.send(update);
                 last_update = Instant::now();
@@ -75,6 +108,47 @@ fn main() {
 
 fn summarize_actions(actions: &[Action]) -> usize {
     actions.len()
+}
+
+fn persist_extraction_artifacts(
+    config: &RuntimeConfig,
+    temperatures: &[f64],
+    pressures: &[f64],
+    sample_index: u64,
+) -> Option<String> {
+    let telemetry = TelemetryRuntime::new();
+    let diagnostics_dir = PathBuf::from(&config.session.diagnostics_path);
+    if fs::create_dir_all(&diagnostics_dir).is_err() {
+        return None;
+    }
+
+    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    let stem = format!("Diagnostics_{}_{}", stamp, sample_index);
+    let csv_path = diagnostics_dir.join(format!("{stem}.csv"));
+    let png_path = diagnostics_dir.join(format!("{stem}.png"));
+
+    let samples: Vec<ExtractionSample> = temperatures
+        .iter()
+        .zip(pressures.iter())
+        .enumerate()
+        .map(|(idx, (temperature, pressure))| ExtractionSample {
+            duration_s: idx as f64 / 10.0,
+            temperature: *temperature,
+            pressure: *pressure,
+        })
+        .collect();
+
+    if telemetry.write_extraction_csv(&samples, &csv_path).is_err() {
+        return None;
+    }
+    if telemetry
+        .generate_chart(temperatures, pressures, &png_path)
+        .is_err()
+    {
+        return None;
+    }
+
+    Some(png_path.to_string_lossy().to_string())
 }
 
 #[cfg(test)]
