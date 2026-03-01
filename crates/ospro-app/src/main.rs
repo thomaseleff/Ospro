@@ -1,5 +1,6 @@
 //! ospro-app: composition root for the Ospro Rust runtime.
 
+use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
 use ospro_core::config::RuntimeConfig;
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
@@ -11,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 fn main() {
     let config = RuntimeConfig::default();
@@ -68,7 +69,6 @@ fn run_runtime_loop(
     let mut control = ControlEngine::new(config.clone());
     let mut shot_start: Option<Instant> = None;
     let mut last_update = Instant::now();
-    let mut sample_index: u64 = 0;
     let mut temperatures = Vec::<f64>::new();
     let mut pressures = Vec::<f64>::new();
     let mut latest_chart_path: Option<String> = None;
@@ -83,7 +83,6 @@ fn run_runtime_loop(
         match event_rx.recv_timeout(Duration::from_millis(100)) {
             Ok(UiEvent::StartBrew) => {
                 shot_start = Some(Instant::now());
-                sample_index = 0;
                 temperatures.clear();
                 pressures.clear();
                 actions.extend(control.handle_event(Event::StartExtraction));
@@ -91,7 +90,6 @@ fn run_runtime_loop(
             Ok(UiEvent::StopBrew) => actions.extend(control.handle_event(Event::StopExtraction)),
             Ok(UiEvent::Reset) => {
                 shot_start = None;
-                sample_index = 0;
                 temperatures.clear();
                 pressures.clear();
                 latest_chart_path = None;
@@ -109,13 +107,12 @@ fn run_runtime_loop(
         ) {
             temperatures.push(readings.temperature_c);
             pressures.push(readings.pressure_bar);
-            sample_index = sample_index.saturating_add(1);
         }
 
         for action in &actions {
             if matches!(action, Action::SaveData) {
                 latest_chart_path =
-                    persist_extraction_artifacts(&config, &temperatures, &pressures, sample_index);
+                    persist_extraction_artifacts(&config, &temperatures, &pressures);
             }
         }
 
@@ -146,7 +143,6 @@ fn persist_extraction_artifacts(
     config: &RuntimeConfig,
     temperatures: &[f64],
     pressures: &[f64],
-    sample_index: u64,
 ) -> Option<String> {
     let telemetry = TelemetryRuntime::new();
     let diagnostics_dir = PathBuf::from(&config.session.diagnostics_path);
@@ -154,8 +150,9 @@ fn persist_extraction_artifacts(
         return None;
     }
 
-    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
-    let stem = format!("Diagnostics_{}_{}", stamp, sample_index);
+    let extraction_id = next_extraction_id(&diagnostics_dir)?;
+    let stamp = diagnostic_stamp();
+    let stem = format!("Diagnostics_{}_{}", extraction_id, stamp.file_date);
     let csv_path = diagnostics_dir.join(format!("{stem}.csv"));
     let png_path = diagnostics_dir.join(format!("{stem}.png"));
 
@@ -172,9 +169,9 @@ fn persist_extraction_artifacts(
 
     let metadata = ExtractionMetadata {
         user: format!("{}, {}", config.user.last, config.user.first),
-        unique_id: stem.clone(),
-        date: stamp.to_string(),
-        time: stamp.to_string(),
+        unique_id: extraction_id.to_string(),
+        date: stamp.date_display,
+        time: stamp.time_display,
         temperature_unit: config.settings.scale.clone(),
         pressure_unit: "Bars".to_string(),
         temp_set_point: format!("{:.1}", config.tpid.set_point),
@@ -197,9 +194,56 @@ fn persist_extraction_artifacts(
     Some(png_path.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DiagnosticStamp {
+    date_display: String,
+    time_display: String,
+    file_date: String,
+}
+
+fn diagnostic_stamp() -> DiagnosticStamp {
+    let now = Local::now();
+    let date_display = now.format("%d/%b/%Y").to_string().to_uppercase();
+    let time_display = now.format("%H:%M:%S").to_string();
+    let file_date = date_display.replace('/', "");
+    DiagnosticStamp {
+        date_display,
+        time_display,
+        file_date,
+    }
+}
+
+fn parse_diagnostics_id(stem: &str) -> Option<u64> {
+    let mut parts = stem.split('_');
+    let prefix = parts.next()?;
+    if prefix != "Diagnostics" {
+        return None;
+    }
+    let id = parts.next()?.parse::<u64>().ok()?;
+    Some(id)
+}
+
+fn next_extraction_id(diagnostics_dir: &PathBuf) -> Option<u64> {
+    let mut max_id = 0_u64;
+    let entries = fs::read_dir(diagnostics_dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
+            continue;
+        }
+        let stem = path.file_stem().and_then(|name| name.to_str())?;
+        if let Some(id) = parse_diagnostics_id(stem) {
+            max_id = max_id.max(id);
+        }
+    }
+    Some(max_id.saturating_add(1))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::Write;
 
     #[test]
     fn bootstrap_components_are_constructible() {
@@ -214,5 +258,35 @@ mod tests {
         assert_eq!(control.state(), ospro_core::control::BrewState::Idle);
         assert_eq!(telemetry.status(), "ready");
         assert_eq!(ui.status(), "slint-mvp");
+    }
+
+    #[test]
+    fn parse_diagnostics_id_extracts_numeric_id() {
+        assert_eq!(parse_diagnostics_id("Diagnostics_12_01MAR2026"), Some(12));
+        assert_eq!(parse_diagnostics_id("Diagnostics_x_01MAR2026"), None);
+        assert_eq!(parse_diagnostics_id("Other_12_01MAR2026"), None);
+    }
+
+    #[test]
+    fn next_extraction_id_scans_existing_files() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let test_dir = std::env::temp_dir().join(format!("ospro-diagnostics-{stamp}"));
+        fs::create_dir_all(&test_dir).expect("temp diagnostics dir should be created");
+
+        let mut one = File::create(test_dir.join("Diagnostics_1_01MAR2026.csv"))
+            .expect("first diagnostics fixture should be created");
+        writeln!(one, "header").expect("fixture should be writable");
+        let mut nine = File::create(test_dir.join("Diagnostics_9_02MAR2026.csv"))
+            .expect("second diagnostics fixture should be created");
+        writeln!(nine, "header").expect("fixture should be writable");
+
+        assert_eq!(next_extraction_id(&test_dir), Some(10));
+
+        let _ = fs::remove_file(test_dir.join("Diagnostics_1_01MAR2026.csv"));
+        let _ = fs::remove_file(test_dir.join("Diagnostics_9_02MAR2026.csv"));
+        let _ = fs::remove_dir(test_dir);
     }
 }
