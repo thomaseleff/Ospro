@@ -1,26 +1,45 @@
 //! ospro-app: composition root for the Ospro Rust runtime.
 
 use ospro_core::config::RuntimeConfig;
-use ospro_core::control::ControlEngine;
+use ospro_core::control::{ControlEngine, Readings};
 use ospro_core::hardware::HardwareBackend;
 use ospro_core::telemetry::TelemetryRuntime;
-use ospro_core::ui::UiRuntime;
+use ospro_core::ui::{StateUpdate, UiRuntime};
+use std::time::Instant;
 
 fn main() {
     let config = RuntimeConfig::default();
-    let hardware = HardwareBackend::mock();
-    let control = ControlEngine::new(RuntimeConfig::default());
-    let telemetry = TelemetryRuntime::new();
-    let (ui, _update_tx, _event_rx) = UiRuntime::new();
+    let _hardware = HardwareBackend::mock();
+    let mut control = ControlEngine::new(config.clone());
+    let _telemetry = TelemetryRuntime::new();
+    let (ui, update_tx, event_rx) = UiRuntime::new();
 
-    println!(
-        "ospro-app bootstrapped: mode={}, backend={}, state={:?}, telemetry={}, ui={}",
-        config.mode(),
-        hardware.backend_name(),
-        control.state(),
-        telemetry.status(),
-        ui.status()
-    );
+    let _control_thread = std::thread::spawn(move || {
+        let now = Instant::now();
+        let readings = Readings {
+            temperature_c: 93.0,
+            pressure_bar: 9.0,
+        }; // Mock readings
+        control.tick(readings, now);
+    });
+
+    std::thread::spawn(move || {
+        while let Ok(_event) = event_rx.recv() {
+            // Handle events and update control
+        }
+    });
+
+    // Update UI
+    update_tx
+        .send(StateUpdate {
+            brew_state: "Idle".to_string(),
+            temperature: 93.0,
+            pressure: 9.0,
+            timer_ms: 0,
+            chart_path: None,
+        })
+        .unwrap();
+
     ui.run();
 }
 

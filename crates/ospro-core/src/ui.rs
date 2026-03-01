@@ -13,6 +13,7 @@ slint! {
         in property <float> temperature: 93.0;
         in property <float> pressure: 9.0;
         in property <duration> timer: 0ms;
+        in property <image> chart-image;
 
         callback start-brew();
         callback stop-brew();
@@ -42,6 +43,12 @@ slint! {
                 Button { text: "Stop"; clicked => { root.stop-brew(); } }
                 Button { text: "Reset"; clicked => { root.reset(); } }
             }
+
+            Image {
+                source: chart-image;
+                width: 640px;
+                height: 240px;
+            }
         }
     }
 }
@@ -59,6 +66,7 @@ pub struct StateUpdate {
     pub temperature: f64,
     pub pressure: f64,
     pub timer_ms: u64,
+    pub chart_path: Option<String>,
 }
 
 pub struct UiRuntime {
@@ -95,6 +103,12 @@ impl UiRuntime {
                     app.set_temperature(update.temperature as f32);
                     app.set_pressure(update.pressure as f32);
                     app.set_timer(update.timer_ms as i64);
+                    if let Some(path) = update.chart_path {
+                        if let Ok(image) = slint::Image::load_from_path(std::path::Path::new(&path))
+                        {
+                            app.set_chart_image(image);
+                        }
+                    }
                 } else {
                     break;
                 }
@@ -133,6 +147,7 @@ mod tests {
                 temperature: 93.0,
                 pressure: 9.0,
                 timer_ms: 1000,
+                chart_path: None,
             })
             .unwrap();
         let event = event_rx.try_recv();
