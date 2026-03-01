@@ -613,6 +613,53 @@ mod tests {
     }
 
     #[test]
+    fn persist_extraction_artifacts_writes_csv_and_chart_outputs() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let diagnostics_dir = std::env::temp_dir().join(format!("ospro-artifacts-{stamp}"));
+        fs::create_dir_all(&diagnostics_dir).expect("diagnostics dir should be created");
+
+        let mut config = RuntimeConfig::default();
+        config.session.diagnostics_path = diagnostics_dir.to_string_lossy().to_string();
+        config.settings.profile = "Pre-Infusion".to_string();
+        config.settings.pressure_curve = vec![
+            PressurePoint {
+                time: 0,
+                pressure: 3.0,
+            },
+            PressurePoint {
+                time: 1,
+                pressure: 7.0,
+            },
+        ];
+
+        let review = persist_extraction_artifacts(&config, &[92.0, 93.0, 94.0], &[3.0, 6.0, 9.0])
+            .expect("artifacts should persist");
+        assert_eq!(review.profile, "Pre-Infusion");
+        assert!(PathBuf::from(&review.chart_path).exists());
+
+        let csv_path = fs::read_dir(&diagnostics_dir)
+            .expect("diagnostics dir should be readable")
+            .flatten()
+            .map(|entry| entry.path())
+            .find(|path| path.extension().and_then(|ext| ext.to_str()) == Some("csv"))
+            .expect("csv artifact should be created");
+        let csv = fs::read_to_string(csv_path).expect("csv artifact should be readable");
+        assert!(csv.contains("ProfileValues"));
+        assert!(csv.contains("Pre-Infusion"));
+
+        for entry in fs::read_dir(&diagnostics_dir)
+            .expect("diagnostics dir should be readable for cleanup")
+            .flatten()
+        {
+            let _ = fs::remove_file(entry.path());
+        }
+        let _ = fs::remove_dir(diagnostics_dir);
+    }
+
+    #[test]
     fn apply_actions_controls_mock_actuators() {
         let backend = HardwareBackend::mock();
         let mut extraction = ExtractionActuator::new(backend.create_gpio(), 23).ok();
