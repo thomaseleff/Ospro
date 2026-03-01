@@ -1,11 +1,12 @@
 use plotters::prelude::*;
+use serde::Deserialize;
 use std::io::Write;
 use std::path::Path;
 
 /// Telemetry runtime facade for extraction/session reporting.
 pub struct TelemetryRuntime;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct ExtractionSample {
     pub duration_s: f64,
     pub temperature: f64,
@@ -13,7 +14,7 @@ pub struct ExtractionSample {
     pub profile_value: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ExtractionMetadata {
     pub user: String,
     pub unique_id: String,
@@ -150,27 +151,35 @@ impl TelemetryRuntime {
             writeln!(
                 file,
                 "{},{},{},{},{:.1},{:.2},{},{:.2},{},{:.1},{:.2},{:.2},{:.2},{:.2},{},{},{:.2}",
-                metadata.user,
-                metadata.unique_id,
-                metadata.date,
-                metadata.time,
+                csv_escape(&metadata.user),
+                csv_escape(&metadata.unique_id),
+                csv_escape(&metadata.date),
+                csv_escape(&metadata.time),
                 sample.duration_s,
                 sample.temperature,
-                metadata.temperature_unit,
+                csv_escape(&metadata.temperature_unit),
                 sample.pressure,
-                metadata.pressure_unit,
+                csv_escape(&metadata.pressure_unit),
                 max_duration,
                 min_temp,
                 max_temp,
                 min_pressure,
                 max_pressure,
-                metadata.temp_set_point,
-                metadata.profile,
+                csv_escape(&metadata.temp_set_point),
+                csv_escape(&metadata.profile),
                 sample.profile_value,
             )?;
         }
         Ok(())
     }
+}
+
+fn csv_escape(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r') {
+        let escaped = value.replace('"', "\"\"");
+        return format!("\"{escaped}\"");
+    }
+    value.to_string()
 }
 
 impl Default for TelemetryRuntime {
