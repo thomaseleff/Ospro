@@ -806,6 +806,98 @@ mod tests {
     }
 
     #[test]
+    fn runtime_loop_processes_ui_events_and_persists_artifacts() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let diagnostics_dir = std::env::temp_dir().join(format!("ospro-runtime-loop-{stamp}"));
+        fs::create_dir_all(&diagnostics_dir).expect("diagnostics dir should be created");
+
+        let mut config = RuntimeConfig::default();
+        config.session.diagnostics_path = diagnostics_dir.to_string_lossy().to_string();
+        config.settings.profile = "Pre-Infusion".to_string();
+        config.settings.pressure_curve = vec![
+            PressurePoint {
+                time: 0,
+                pressure: 3.0,
+            },
+            PressurePoint {
+                time: 1,
+                pressure: 7.0,
+            },
+        ];
+
+        let (event_tx, event_rx) = crossbeam_channel::bounded::<UiEvent>(16);
+        let (update_tx, update_rx) = crossbeam_channel::bounded::<StateUpdate>(32);
+        let running = Arc::new(AtomicBool::new(true));
+        let worker_running = Arc::clone(&running);
+        let worker = thread::spawn(move || {
+            run_runtime_loop(
+                config,
+                HardwareBackend::mock(),
+                event_rx,
+                update_tx,
+                worker_running,
+            );
+        });
+
+        event_tx
+            .send(UiEvent::StartBrew)
+            .expect("start event should send");
+        thread::sleep(Duration::from_millis(150));
+        event_tx
+            .send(UiEvent::StopBrew)
+            .expect("stop event should send");
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut review_seen = false;
+        while Instant::now() < deadline {
+            if let Ok(update) = update_rx.recv_timeout(Duration::from_millis(100)) {
+                if update.review_visible || update.chart_path.is_some() {
+                    review_seen = true;
+                    break;
+                }
+            }
+        }
+        assert!(
+            review_seen,
+            "runtime should publish extraction review update"
+        );
+
+        running.store(false, Ordering::Relaxed);
+        drop(event_tx);
+        worker
+            .join()
+            .expect("runtime loop worker should shut down cleanly");
+
+        let mut csv_count = 0;
+        let mut png_count = 0;
+        for entry in fs::read_dir(&diagnostics_dir)
+            .expect("diagnostics directory should be readable")
+            .flatten()
+        {
+            let path = entry.path();
+            match path.extension().and_then(|ext| ext.to_str()) {
+                Some("csv") => csv_count += 1,
+                Some("png") => png_count += 1,
+                _ => {}
+            }
+            let _ = fs::remove_file(path);
+        }
+        let _ = fs::remove_dir(diagnostics_dir);
+
+        assert!(
+            csv_count >= 1,
+            "runtime should persist at least one csv file"
+        );
+        assert!(
+            png_count >= 1,
+            "runtime should persist at least one chart file"
+        );
+    }
+
+    #[test]
     fn apply_actions_controls_mock_actuators() {
         let backend = HardwareBackend::mock();
         let mut extraction = ExtractionActuator::new(backend.create_gpio(), 23).ok();
