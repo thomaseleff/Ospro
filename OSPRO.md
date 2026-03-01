@@ -8,13 +8,17 @@ Ospro is a Raspberry Pi-based espresso control application with a local touch UI
 
 ## Progress
 
-- Date: 2026-03-01
+- Date: 2026-02-28
 - Active branch: `v0.2.0-rust`
 - Completed:
   - WS1 committed (`125590b`): governance docs, Rust tooling standards, CI quality gates, simplified workspace scaffold.
   - WS2 committed (`bff47a0`): Rust-style typed config model, legacy Python schema compatibility loader, validation rules, integration tests + fixtures.
+  - WS3 committed (`54965e2`): Hardware Abstraction Layer (HAL traits, mock backend behavior, Raspberry Pi backend skeleton, hardware error taxonomy).
+  - WS4 committed (`7ec2271`): Sensor and Actuator Ports (port MAX31855/ADS1115 sensors, actuator wrappers, conversions, docs, tests).
+- Completed:
+  - WS5 committed: Control Core and Safety State Machine (state machine, PID controller w/ deadband/windup, brew config, tests).
 - In progress:
-  - WS3 Hardware Abstraction Layer (HAL traits, mock backend behavior, Raspberry Pi backend skeleton, hardware error taxonomy).
+  - WS6 Slint Touch UI MVP.
 
 ## Invariants
 
