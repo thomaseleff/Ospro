@@ -21,6 +21,7 @@ fn main() {
         telemetry.status(),
         ui.status()
     );
+    ui.run();
 }
 
 #[cfg(test)]

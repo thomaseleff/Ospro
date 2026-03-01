@@ -147,6 +147,7 @@ impl Default for RuntimeConfig {
                 preinfusion_pressure: default_preinfusion_pressure(),
                 extraction_time: default_extraction_time(),
                 extraction_pressure: default_extraction_pressure(),
+                pressure_curve: Vec::new(),
             },
             extraction: ExtractionConfig { pin: 23 },
             tpid: PidConfig::default_temperature(),
@@ -307,6 +308,14 @@ pub struct SettingsConfig {
     pub extraction_time: u32,
     #[serde(default = "default_extraction_pressure")]
     pub extraction_pressure: f64,
+    #[serde(default)]
+    pub pressure_curve: Vec<PressurePoint>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PressurePoint {
+    pub time: u32,
+    pub pressure: f64,
 }
 
 fn default_preinfusion_time() -> u32 {
@@ -364,6 +373,23 @@ impl SettingsConfig {
             return Err(ConfigError::Validation(
                 "settings.extraction_pressure must be a non-negative finite number".to_string(),
             ));
+        }
+
+        if !self.pressure_curve.is_empty() {
+            let mut prev_time = 0;
+            for point in &self.pressure_curve {
+                if point.time <= prev_time {
+                    return Err(ConfigError::Validation(
+                        "settings.pressure_curve times must be strictly increasing".to_string(),
+                    ));
+                }
+                if point.pressure < 0.0 || !point.pressure.is_finite() {
+                    return Err(ConfigError::Validation(
+                        "settings.pressure_curve pressures must be non-negative finite".to_string(),
+                    ));
+                }
+                prev_time = point.time;
+            }
         }
 
         Ok(())

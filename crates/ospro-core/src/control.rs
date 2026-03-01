@@ -113,9 +113,6 @@ impl Pid {
         if dt == 0.0 {
             return 0.0; // Avoid div by zero
         }
-        if dt == 0.0 {
-            return 0.0; // Avoid div by zero
-        }
 
         self.integral += error * dt;
         let windup_limit = 100.0 / self.config.i.max(1e-6);
@@ -187,21 +184,13 @@ impl ControlEngine {
 
         let old_state = self.state;
         self.state = new_state;
-        if old_state != new_state {
-            if matches!(new_state, BrewState::Idle | BrewState::Fault) {
-                self.temp_pid.reset();
-                self.press_pid.reset();
-                self.temperatures.clear();
-                self.pressures.clear();
-            }
-            if new_state == BrewState::Preinfusion {
-                self.press_pid
-                    .set_set_point(self.config.settings.preinfusion_pressure);
-            } else if new_state == BrewState::Extraction {
-                self.press_pid
-                    .set_set_point(self.config.settings.extraction_pressure);
-            }
+        if old_state != new_state && matches!(new_state, BrewState::Idle | BrewState::Fault) {
+            self.temp_pid.reset();
+            self.press_pid.reset();
+            self.temperatures.clear();
+            self.pressures.clear();
         }
+        // Set points now handled in tick
 
         actions
     }
@@ -223,8 +212,17 @@ impl ControlEngine {
             BrewState::Preinfusion | BrewState::Extraction => {
                 self.temperatures.push(readings.temperature_c);
                 self.pressures.push(readings.pressure_bar);
-                let heater_duty = self.temp_pid.compute(readings.temperature_c, now);
+
+                let set_point = self.get_current_pressure_setpoint(now);
+                self.press_pid.set_set_point(set_point);
                 let pump_duty = self.press_pid.compute(readings.pressure_bar, now);
+
+                let heater_duty = if self.state == BrewState::Extraction {
+                    10.0
+                } else {
+                    self.temp_pid.compute(readings.temperature_c, now)
+                };
+
                 actions.push(Action::SetHeaterDuty(heater_duty));
                 actions.push(Action::SetPumpDuty(pump_duty));
             }
@@ -232,6 +230,30 @@ impl ControlEngine {
         }
 
         actions
+    }
+
+    fn get_current_pressure_setpoint(&self, now: Instant) -> f64 {
+        let elapsed = now.duration_since(self.start_time).as_secs() as u32;
+        if self.state == BrewState::Preinfusion {
+            self.config.settings.preinfusion_pressure
+        } else {
+            let curve = &self.config.settings.pressure_curve;
+            if curve.is_empty() {
+                return self.config.settings.extraction_pressure;
+            }
+            let mut prev = &curve[0];
+            if elapsed < prev.time {
+                return prev.pressure;
+            }
+            for point in &curve[1..] {
+                if elapsed < point.time {
+                    let t = (elapsed - prev.time) as f64 / (point.time - prev.time) as f64;
+                    return prev.pressure + t * (point.pressure - prev.pressure);
+                }
+                prev = point;
+            }
+            prev.pressure
+        }
     }
 }
 
