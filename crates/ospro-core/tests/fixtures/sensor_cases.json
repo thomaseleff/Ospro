@@ -1,0 +1,13 @@
+{
+  "temperature_celsius_cases": [
+    { "celsius": 25.0, "expected_rounded_celsius": 25 },
+    { "celsius": 93.0, "expected_rounded_celsius": 93 },
+    { "celsius": -10.0, "expected_rounded_celsius": -10 }
+  ],
+  "pressure_cases": [
+    { "adc_raw": 5000, "expected_bar": 3.7 },
+    { "adc_raw": 0, "expected_bar": 4.9 },
+    { "adc_raw": 8000, "expected_bar": 8.9 },
+    { "adc_raw": -1000, "expected_bar": 6.6 }
+  ]
+}
