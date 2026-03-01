@@ -6,6 +6,16 @@ Ospro is a Raspberry Pi-based espresso control application with a local touch UI
 
 `v0.2.0` is a full runtime migration from the Python `v0.1.0` baseline to Rust to improve reliability, maintainability, performance predictability, and architecture clarity while preserving core brewing behavior.
 
+## Progress
+
+- Date: 2026-03-01
+- Active branch: `v0.2.0-rust`
+- Completed:
+  - WS1 committed (`125590b`): governance docs, Rust tooling standards, CI quality gates, simplified workspace scaffold.
+  - WS2 committed (`bff47a0`): Rust-style typed config model, legacy Python schema compatibility loader, validation rules, integration tests + fixtures.
+- In progress:
+  - WS3 Hardware Abstraction Layer (HAL traits, mock backend behavior, Raspberry Pi backend skeleton, hardware error taxonomy).
+
 ## Invariants
 
 1. Local-first operation: brewing must not depend on network access.
