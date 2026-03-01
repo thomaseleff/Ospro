@@ -12,6 +12,33 @@ pub struct ExtractionSample {
     pub pressure: f64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtractionMetadata {
+    pub user: String,
+    pub unique_id: String,
+    pub date: String,
+    pub time: String,
+    pub temperature_unit: String,
+    pub pressure_unit: String,
+    pub temp_set_point: String,
+    pub profile: String,
+}
+
+impl Default for ExtractionMetadata {
+    fn default() -> Self {
+        Self {
+            user: "Unknown, User".to_string(),
+            unique_id: "0".to_string(),
+            date: "1970-01-01".to_string(),
+            time: "00:00:00".to_string(),
+            temperature_unit: "C".to_string(),
+            pressure_unit: "Bars".to_string(),
+            temp_set_point: "0.0".to_string(),
+            profile: "Manual".to_string(),
+        }
+    }
+}
+
 impl TelemetryRuntime {
     pub fn new() -> Self {
         Self
@@ -79,13 +106,65 @@ impl TelemetryRuntime {
         samples: &[ExtractionSample],
         path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        self.write_extraction_csv_with_metadata(samples, &ExtractionMetadata::default(), path)
+    }
+
+    pub fn write_extraction_csv_with_metadata(
+        &self,
+        samples: &[ExtractionSample],
+        metadata: &ExtractionMetadata,
+        path: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let max_duration = samples
+            .last()
+            .map(|sample| sample.duration_s)
+            .unwrap_or(0.0);
+        let min_temp = samples
+            .iter()
+            .map(|sample| sample.temperature)
+            .reduce(f64::min)
+            .unwrap_or(0.0);
+        let max_temp = samples
+            .iter()
+            .map(|sample| sample.temperature)
+            .reduce(f64::max)
+            .unwrap_or(0.0);
+        let min_pressure = samples
+            .iter()
+            .map(|sample| sample.pressure)
+            .reduce(f64::min)
+            .unwrap_or(0.0);
+        let max_pressure = samples
+            .iter()
+            .map(|sample| sample.pressure)
+            .reduce(f64::max)
+            .unwrap_or(0.0);
+
         let mut file = std::fs::File::create(path)?;
-        writeln!(file, "Duration,Temperature,Pressure")?;
+        writeln!(
+            file,
+            "User,UniqueID,Date,Time,Duration,Temperature,TUnit,Pressure,PUnit,MaxDuration,MinTemp,MaxTemp,MinPressure,MaxPressure,TempSetPoint,Profile"
+        )?;
         for sample in samples {
             writeln!(
                 file,
-                "{:.1},{:.2},{:.2}",
-                sample.duration_s, sample.temperature, sample.pressure
+                "{},{},{},{},{:.1},{:.2},{},{:.2},{},{:.1},{:.2},{:.2},{:.2},{:.2},{},{}",
+                metadata.user,
+                metadata.unique_id,
+                metadata.date,
+                metadata.time,
+                sample.duration_s,
+                sample.temperature,
+                metadata.temperature_unit,
+                sample.pressure,
+                metadata.pressure_unit,
+                max_duration,
+                min_temp,
+                max_temp,
+                min_pressure,
+                max_pressure,
+                metadata.temp_set_point,
+                metadata.profile,
             )?;
         }
         Ok(())
@@ -146,7 +225,7 @@ mod tests {
             .expect("empty csv write should succeed");
         let empty_contents =
             std::fs::read_to_string(&empty_path).expect("empty csv should be readable");
-        assert!(empty_contents.starts_with("Duration,Temperature,Pressure"));
+        assert!(empty_contents.starts_with("User,UniqueID,Date,Time,Duration"));
         let _ = std::fs::remove_file(empty_path);
 
         let short_path = temp_chart_path("short-csv").with_extension("csv");
@@ -173,6 +252,7 @@ mod tests {
         let short_contents =
             std::fs::read_to_string(&short_path).expect("short csv should be readable");
         assert!(short_contents.lines().count() >= 4);
+        assert!(short_contents.contains("Manual"));
         let _ = std::fs::remove_file(short_path);
     }
 }

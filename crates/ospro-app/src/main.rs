@@ -4,7 +4,7 @@ use crossbeam_channel::{Receiver, Sender};
 use ospro_core::config::RuntimeConfig;
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
 use ospro_core::hardware::HardwareBackend;
-use ospro_core::telemetry::{ExtractionSample, TelemetryRuntime};
+use ospro_core::telemetry::{ExtractionMetadata, ExtractionSample, TelemetryRuntime};
 use ospro_core::ui::{StateUpdate, UiEvent, UiRuntime};
 use std::fs;
 use std::path::PathBuf;
@@ -170,7 +170,21 @@ fn persist_extraction_artifacts(
         })
         .collect();
 
-    if telemetry.write_extraction_csv(&samples, &csv_path).is_err() {
+    let metadata = ExtractionMetadata {
+        user: format!("{}, {}", config.user.last, config.user.first),
+        unique_id: stem.clone(),
+        date: stamp.to_string(),
+        time: stamp.to_string(),
+        temperature_unit: config.settings.scale.clone(),
+        pressure_unit: "Bars".to_string(),
+        temp_set_point: format!("{:.1}", config.tpid.set_point),
+        profile: config.settings.profile.clone(),
+    };
+
+    if telemetry
+        .write_extraction_csv_with_metadata(&samples, &metadata, &csv_path)
+        .is_err()
+    {
         return None;
     }
     if telemetry
