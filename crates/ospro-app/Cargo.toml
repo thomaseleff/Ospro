@@ -7,3 +7,4 @@ license = "MIT"
 
 [dependencies]
 ospro-core.workspace = true
+crossbeam-channel = "0.5.15"
