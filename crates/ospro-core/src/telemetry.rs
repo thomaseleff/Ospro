@@ -10,6 +10,7 @@ pub struct ExtractionSample {
     pub duration_s: f64,
     pub temperature: f64,
     pub pressure: f64,
+    pub profile_value: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,12 +144,12 @@ impl TelemetryRuntime {
         let mut file = std::fs::File::create(path)?;
         writeln!(
             file,
-            "User,UniqueID,Date,Time,Duration,Temperature,TUnit,Pressure,PUnit,MaxDuration,MinTemp,MaxTemp,MinPressure,MaxPressure,TempSetPoint,Profile"
+            "User,UniqueID,Date,Time,Duration,Temperature,TUnit,Pressure,PUnit,MaxDuration,MinTemp,MaxTemp,MinPressure,MaxPressure,TempSetPoint,Profile,ProfileValues"
         )?;
         for sample in samples {
             writeln!(
                 file,
-                "{},{},{},{},{:.1},{:.2},{},{:.2},{},{:.1},{:.2},{:.2},{:.2},{:.2},{},{}",
+                "{},{},{},{},{:.1},{:.2},{},{:.2},{},{:.1},{:.2},{:.2},{:.2},{:.2},{},{},{:.2}",
                 metadata.user,
                 metadata.unique_id,
                 metadata.date,
@@ -165,6 +166,7 @@ impl TelemetryRuntime {
                 max_pressure,
                 metadata.temp_set_point,
                 metadata.profile,
+                sample.profile_value,
             )?;
         }
         Ok(())
@@ -234,16 +236,19 @@ mod tests {
                 duration_s: 0.0,
                 temperature: 92.0,
                 pressure: 2.0,
+                profile_value: 0.0,
             },
             ExtractionSample {
                 duration_s: 0.1,
                 temperature: 93.0,
                 pressure: 7.0,
+                profile_value: 0.0,
             },
             ExtractionSample {
                 duration_s: 0.2,
                 temperature: 94.0,
                 pressure: 9.0,
+                profile_value: 0.0,
             },
         ];
         telemetry

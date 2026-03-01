@@ -164,6 +164,7 @@ fn persist_extraction_artifacts(
             duration_s: idx as f64 / 10.0,
             temperature: *temperature,
             pressure: *pressure,
+            profile_value: profile_target_value(config, idx as f64 / 10.0),
         })
         .collect();
 
@@ -192,6 +193,35 @@ fn persist_extraction_artifacts(
     }
 
     Some(png_path.to_string_lossy().to_string())
+}
+
+fn profile_target_value(config: &RuntimeConfig, duration_s: f64) -> f64 {
+    if config.settings.profile.eq_ignore_ascii_case("manual") {
+        return 0.0;
+    }
+
+    let elapsed = duration_s.max(0.0);
+    let curve = &config.settings.pressure_curve;
+    if curve.is_empty() {
+        return config.settings.extraction_pressure;
+    }
+
+    let mut prev = &curve[0];
+    if elapsed < prev.time as f64 {
+        return prev.pressure;
+    }
+    for point in &curve[1..] {
+        if elapsed < point.time as f64 {
+            let dt = (point.time - prev.time) as f64;
+            if dt <= 0.0 {
+                return prev.pressure;
+            }
+            let t = (elapsed - prev.time as f64) / dt;
+            return prev.pressure + t * (point.pressure - prev.pressure);
+        }
+        prev = point;
+    }
+    prev.pressure
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -288,5 +318,31 @@ mod tests {
         let _ = fs::remove_file(test_dir.join("Diagnostics_1_01MAR2026.csv"));
         let _ = fs::remove_file(test_dir.join("Diagnostics_9_02MAR2026.csv"));
         let _ = fs::remove_dir(test_dir);
+    }
+
+    #[test]
+    fn profile_target_value_returns_zero_for_manual_profile() {
+        let config = RuntimeConfig::default();
+        assert_eq!(profile_target_value(&config, 5.0), 0.0);
+    }
+
+    #[test]
+    fn profile_target_value_interpolates_curve() {
+        let mut config = RuntimeConfig::default();
+        config.settings.profile = "Custom".to_string();
+        config.settings.pressure_curve = vec![
+            ospro_core::config::PressurePoint {
+                time: 0,
+                pressure: 3.0,
+            },
+            ospro_core::config::PressurePoint {
+                time: 10,
+                pressure: 9.0,
+            },
+        ];
+
+        assert_eq!(profile_target_value(&config, 0.0), 3.0);
+        assert_eq!(profile_target_value(&config, 5.0), 6.0);
+        assert_eq!(profile_target_value(&config, 10.0), 9.0);
     }
 }
