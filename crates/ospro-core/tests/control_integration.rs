@@ -78,12 +78,12 @@ fn transition_matrix_cases() {
             BrewState::Idle,
             vec![Action::ResetData],
         ),
-        // Unhandled -> Fault with Shutdown
+        // Unhandled event is ignored and state is unchanged
         (
             BrewState::Idle,
             Event::TimerExpired,
-            BrewState::Fault,
-            vec![Action::Shutdown, Action::ResetData],
+            BrewState::Idle,
+            vec![],
         ),
     ];
 

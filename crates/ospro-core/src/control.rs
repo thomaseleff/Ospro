@@ -22,7 +22,7 @@
 //! | Extraction      | FaultDetected     | Fault        | Shutdown                         |
 //! | Done            | Reset             | Idle         | ResetData                        |
 //! | Fault           | Reset             | Idle         | ResetData                        |
-//! | *               | *                 | Fault        | Shutdown (on unhandled)          |
+//! | *               | *                 | same state   | none (ignored)                   |
 
 use crate::config::{PidConfig, RuntimeConfig};
 use crate::hardware::HardwareError;
@@ -292,6 +292,6 @@ fn transition(
         (BrewState::Done | BrewState::Fault, Event::Reset) => {
             (BrewState::Idle, vec![Action::ResetData])
         }
-        _ => (BrewState::Fault, vec![Action::Shutdown, Action::ResetData]), // Safety fallback
+        _ => (current, Vec::new()),
     }
 }
