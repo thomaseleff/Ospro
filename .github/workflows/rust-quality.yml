@@ -1,0 +1,46 @@
+name: rust-quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - v0.2.0-rust
+      - "v0.2.*"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check workspace exists
+        id: has_workspace
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: cargo fmt
+        if: steps.has_workspace.outputs.present == 'true'
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        if: steps.has_workspace.outputs.present == 'true'
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: cargo test
+        if: steps.has_workspace.outputs.present == 'true'
+        run: cargo test --workspace --all-targets
+
+      - name: No Rust workspace yet
+        if: steps.has_workspace.outputs.present != 'true'
+        run: echo "No Cargo.toml yet; skipping Rust quality checks."

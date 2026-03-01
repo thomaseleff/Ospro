@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/ospro-app",
+  "crates/ospro-core",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.2.0"
+rust-version = "1.75"
+
+[workspace.dependencies]
+ospro-core = { path = "crates/ospro-core" }

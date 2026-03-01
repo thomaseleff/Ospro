@@ -11,3 +11,6 @@ __pycache__
 /pcb-board/archive
 /simulation/archive
 testing.py
+# Rust
+/target
+
