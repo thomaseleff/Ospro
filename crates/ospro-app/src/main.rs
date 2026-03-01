@@ -17,7 +17,11 @@ use std::time::{Duration, Instant};
 
 fn main() {
     let config = load_runtime_config();
-    let hardware = HardwareBackend::mock();
+    let hardware = select_hardware_backend(&config);
+    eprintln!(
+        "OSPRO startup: using '{}' hardware backend",
+        hardware.backend_name()
+    );
     let _telemetry = TelemetryRuntime::new();
     let (ui, update_tx, event_rx) = match UiRuntime::new() {
         Ok(parts) => parts,
@@ -81,6 +85,40 @@ fn format_config_error(error: &ConfigError) -> String {
         ConfigError::Io(source) => format!("I/O error: {source}"),
         ConfigError::Parse(source) => format!("JSON parse error: {source}"),
         ConfigError::Validation(message) => format!("validation error: {message}"),
+    }
+}
+
+fn select_hardware_backend(config: &RuntimeConfig) -> HardwareBackend {
+    let backend_override = std::env::var("OSPRO_HARDWARE_BACKEND").ok();
+    select_hardware_backend_from_override(config, backend_override.as_deref())
+}
+
+fn select_hardware_backend_from_override(
+    config: &RuntimeConfig,
+    backend_override: Option<&str>,
+) -> HardwareBackend {
+    let normalized = backend_override.map(|value| value.trim().to_ascii_lowercase());
+
+    match normalized.as_deref() {
+        Some("mock") => HardwareBackend::mock(),
+        Some("raspberry-pi" | "rpi") => HardwareBackend::raspberry_pi(),
+        Some(other) => {
+            eprintln!(
+                "OSPRO startup warning: unknown OSPRO_HARDWARE_BACKEND='{other}', using config-derived backend"
+            );
+            if config.session.dev {
+                HardwareBackend::mock()
+            } else {
+                HardwareBackend::raspberry_pi()
+            }
+        }
+        None => {
+            if config.session.dev {
+                HardwareBackend::mock()
+            } else {
+                HardwareBackend::raspberry_pi()
+            }
+        }
     }
 }
 
@@ -630,6 +668,38 @@ mod tests {
 
         assert_eq!(config.user.first, "Unknown");
         assert_eq!(config.user.last, "User");
+    }
+
+    #[test]
+    fn select_hardware_backend_defaults_from_session_mode() {
+        let mut dev = RuntimeConfig::default();
+        dev.session.dev = true;
+        let mut prod = RuntimeConfig::default();
+        prod.session.dev = false;
+
+        let dev_backend = select_hardware_backend_from_override(&dev, None);
+        let prod_backend = select_hardware_backend_from_override(&prod, None);
+
+        assert_eq!(dev_backend.backend_name(), "mock");
+        assert_eq!(prod_backend.backend_name(), "raspberry-pi");
+    }
+
+    #[test]
+    fn select_hardware_backend_honors_override() {
+        let mut config = RuntimeConfig::default();
+        config.session.dev = false;
+
+        let backend = select_hardware_backend_from_override(&config, Some("mock"));
+        assert_eq!(backend.backend_name(), "mock");
+    }
+
+    #[test]
+    fn select_hardware_backend_uses_config_when_override_invalid() {
+        let mut config = RuntimeConfig::default();
+        config.session.dev = false;
+
+        let backend = select_hardware_backend_from_override(&config, Some("invalid"));
+        assert_eq!(backend.backend_name(), "raspberry-pi");
     }
 
     #[test]
