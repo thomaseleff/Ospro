@@ -1,11 +1,55 @@
 use crossbeam_channel::{bounded, Receiver, Sender};
-use slint::{ComponentHandle, Duration};
-slint::include_modules!();
+use slint::slint;
+
+slint! {
+    import { Button } from "std-widgets.slint";
+
+    export component App inherits Window {
+        width: 1024px;
+        height: 768px;
+        title: "Ospro WS6";
+
+        in property <string> brew-state: "Idle";
+        in property <float> temperature: 93.0;
+        in property <float> pressure: 9.0;
+        in property <duration> timer: 0ms;
+
+        callback start-brew();
+        callback stop-brew();
+        callback reset();
+
+        VerticalLayout {
+            padding: 20px;
+            spacing: 20px;
+
+            Text {
+                text: "Ospro WS6 MVP";
+                font-size: 32px;
+                horizontal-alignment: center;
+            }
+
+            VerticalLayout {
+                spacing: 10px;
+                Text { text: "State: {brew-state}"; font-size: 24px; }
+                Text { text: "Temp: {temperature} °C"; font-size: 24px; }
+                Text { text: "Pressure: {pressure} bar"; font-size: 24px; }
+                Text { text: "Timer: {timer}"; font-size: 24px; }
+            }
+
+            HorizontalLayout {
+                spacing: 10px;
+                Button { text: "Start"; clicked => { root.start-brew(); } }
+                Button { text: "Stop"; clicked => { root.stop-brew(); } }
+                Button { text: "Reset"; clicked => { root.reset(); } }
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum UiEvent {
-    StartExtraction,
-    StopExtraction,
+    StartBrew,
+    StopBrew,
     Reset,
 }
 
@@ -17,60 +61,81 @@ pub struct StateUpdate {
     pub timer_ms: u64,
 }
 
-#[derive(Debug)]
 pub struct UiRuntime {
-    _app: ComponentHandle<App>,
-    event_tx: Sender<UiEvent>,
-    update_rx: Receiver<StateUpdate>,
+    _app: App,
 }
 
 impl UiRuntime {
     pub fn new() -> (Self, Sender<StateUpdate>, Receiver<UiEvent>) {
         let (update_tx, update_rx) = bounded::<StateUpdate>(100);
         let (event_tx, event_rx) = bounded::<UiEvent>(100);
-        let app = App::new().unwrap();
+        let app = App::new().expect("Failed to create App component");
 
-        let ui = Self {
-            _app: app.clone(),
-            event_tx,
-            update_rx,
-        };
+        let weak_app = app.as_weak();
 
-        // Spawn update loop
-        std::thread::spawn(move || {
-            while let Ok(update) = update_rx.recv() {
-                app.set_brew_state(update.brew_state.into());
-                app.set_temperature(update.temperature.into());
-                app.set_pressure(update.pressure.into());
-                app.set_timer(Duration::from_millis(update.timer_ms));
-            }
+        let start_tx = event_tx.clone();
+        app.on_start_brew(move || {
+            let _ = start_tx.send(UiEvent::StartBrew);
+        });
+        let stop_tx = event_tx.clone();
+        app.on_stop_brew(move || {
+            let _ = stop_tx.send(UiEvent::StopBrew);
+        });
+        let reset_tx = event_tx.clone();
+        app.on_reset(move || {
+            let _ = reset_tx.send(UiEvent::Reset);
         });
 
-        // Event handler thread if needed
+        let ui = Self { _app: app };
+
         std::thread::spawn(move || {
-            while let Ok(event) = event_rx.recv() {
-                match event {
-                    UiEvent::StartExtraction => println!("UI: Start brew"),
-                    UiEvent::StopExtraction => println!("UI: Stop brew"),
-                    UiEvent::Reset => println!("UI: Reset"),
+            while let Ok(update) = update_rx.recv() {
+                if let Some(app) = weak_app.upgrade() {
+                    app.set_brew_state(update.brew_state.into());
+                    app.set_temperature(update.temperature as f32);
+                    app.set_pressure(update.pressure as f32);
+                    app.set_timer(update.timer_ms as i64);
+                } else {
+                    break;
                 }
             }
         });
 
-        (ui, update_tx, ui.event_tx.clone())
+        (ui, update_tx, event_rx)
     }
 
     pub fn run(self) {
-        self._app.run().unwrap();
+        self._app.run().expect("Failed to run UI");
     }
 
     pub fn status(&self) -> &'static str {
-        "slint-wired"
+        "slint-mvp"
     }
 }
 
 impl Default for UiRuntime {
     fn default() -> Self {
         Self::new().0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ui_new_returns_channels() {
+        let (ui, update_tx, event_rx) = UiRuntime::new();
+        assert_eq!(ui.status(), "slint-mvp");
+        update_tx
+            .send(StateUpdate {
+                brew_state: "Test".to_string(),
+                temperature: 93.0,
+                pressure: 9.0,
+                timer_ms: 1000,
+            })
+            .unwrap();
+        let event = event_rx.try_recv();
+        assert!(event.is_err());
     }
 }

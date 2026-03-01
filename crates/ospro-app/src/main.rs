@@ -11,7 +11,7 @@ fn main() {
     let hardware = HardwareBackend::mock();
     let control = ControlEngine::new(RuntimeConfig::default());
     let telemetry = TelemetryRuntime::new();
-    let ui = UiRuntime::new();
+    let (ui, _update_tx, _event_rx) = UiRuntime::new();
 
     println!(
         "ospro-app bootstrapped: mode={}, backend={}, state={:?}, telemetry={}, ui={}",
@@ -33,12 +33,12 @@ mod tests {
         let hardware = HardwareBackend::mock();
         let control = ControlEngine::new(RuntimeConfig::default());
         let telemetry = TelemetryRuntime::new();
-        let ui = UiRuntime::new();
+        let (ui, _update_tx, _event_rx) = UiRuntime::new();
 
         assert_eq!(config.mode(), "dev");
         assert_eq!(hardware.backend_name(), "mock");
         assert_eq!(control.state(), ospro_core::control::BrewState::Idle);
         assert_eq!(telemetry.status(), "ready");
-        assert_eq!(ui.status(), "ready");
+        assert_eq!(ui.status(), "slint-mvp");
     }
 }
