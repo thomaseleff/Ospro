@@ -143,6 +143,10 @@ impl Default for RuntimeConfig {
                 scale_label: SCALE_LABEL_FAHRENHEIT.to_string(),
                 flush: 1,
                 profile: "Manual".to_string(),
+                preinfusion_time: default_preinfusion_time(),
+                preinfusion_pressure: default_preinfusion_pressure(),
+                extraction_time: default_extraction_time(),
+                extraction_pressure: default_extraction_pressure(),
             },
             extraction: ExtractionConfig { pin: 23 },
             tpid: PidConfig::default_temperature(),
@@ -288,13 +292,34 @@ impl Default for FormatConfig {
 }
 
 /// Operator-facing settings that may change between extractions.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SettingsConfig {
     pub scale: String,
     #[serde(alias = "scaleLabel")]
     pub scale_label: String,
     pub flush: u8,
     pub profile: String,
+    #[serde(default = "default_preinfusion_time")]
+    pub preinfusion_time: u32,
+    #[serde(default = "default_preinfusion_pressure")]
+    pub preinfusion_pressure: f64,
+    #[serde(default = "default_extraction_time")]
+    pub extraction_time: u32,
+    #[serde(default = "default_extraction_pressure")]
+    pub extraction_pressure: f64,
+}
+
+fn default_preinfusion_time() -> u32 {
+    10
+}
+fn default_preinfusion_pressure() -> f64 {
+    4.0
+}
+fn default_extraction_time() -> u32 {
+    30
+}
+fn default_extraction_pressure() -> f64 {
+    9.0
 }
 
 impl SettingsConfig {
@@ -314,6 +339,30 @@ impl SettingsConfig {
         if self.profile.trim().is_empty() {
             return Err(ConfigError::Validation(
                 "settings.profile must not be empty".to_string(),
+            ));
+        }
+
+        if self.preinfusion_time == 0 {
+            return Err(ConfigError::Validation(
+                "settings.preinfusion_time must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.extraction_time == 0 {
+            return Err(ConfigError::Validation(
+                "settings.extraction_time must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.preinfusion_pressure < 0.0 || !self.preinfusion_pressure.is_finite() {
+            return Err(ConfigError::Validation(
+                "settings.preinfusion_pressure must be a non-negative finite number".to_string(),
+            ));
+        }
+
+        if self.extraction_pressure < 0.0 || !self.extraction_pressure.is_finite() {
+            return Err(ConfigError::Validation(
+                "settings.extraction_pressure must be a non-negative finite number".to_string(),
             ));
         }
 
@@ -366,9 +415,9 @@ impl PidConfig {
             sample_rate: 0.1,
             set_point: 9.0,
             dead_zone_range: 1.0,
-            p: 0.0,
-            i: 0.0,
-            d: 0.0,
+            p: 0.5, // Basic proportional term for pressure response
+            i: 0.1,
+            d: 0.05,
             error: None,
         }
     }
