@@ -3,7 +3,7 @@
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
 use ospro_core::actuators::{ExtractionActuator, PwmActuator};
-use ospro_core::config::RuntimeConfig;
+use ospro_core::config::{PressurePoint, RuntimeConfig};
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
 use ospro_core::hardware::{Gpio, HardwareBackend, HardwareError, Pwm};
 use ospro_core::telemetry::{ExtractionMetadata, ExtractionSample, TelemetryRuntime};
@@ -16,7 +16,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 fn main() {
-    let config = RuntimeConfig::default();
+    let config = load_legacy_profile_curve(RuntimeConfig::default());
     let hardware = HardwareBackend::mock();
     let _telemetry = TelemetryRuntime::new();
     let (ui, update_tx, event_rx) = UiRuntime::new();
@@ -29,6 +29,71 @@ fn main() {
 
 fn summarize_actions(actions: &[Action]) -> usize {
     actions.len()
+}
+
+fn load_legacy_profile_curve(mut config: RuntimeConfig) -> RuntimeConfig {
+    if !config.settings.pressure_curve.is_empty()
+        || config.settings.profile.eq_ignore_ascii_case("manual")
+    {
+        return config;
+    }
+
+    let profile_path = PathBuf::from(&config.session.config_path)
+        .join("profiles")
+        .join(format!("{}.json", config.settings.profile));
+    let raw = match fs::read_to_string(profile_path) {
+        Ok(raw) => raw,
+        Err(_) => return config,
+    };
+    let json = match serde_json::from_str::<serde_json::Value>(&raw) {
+        Ok(json) => json,
+        Err(_) => return config,
+    };
+    let settings = match json.get("settings") {
+        Some(settings) => settings,
+        None => return config,
+    };
+    let time_list = match settings.get("timeLst").and_then(|v| v.as_array()) {
+        Some(list) => list,
+        None => return config,
+    };
+    let pressure_list = match settings
+        .get("pressureProfileLst")
+        .and_then(|v| v.as_array())
+    {
+        Some(list) => list,
+        None => return config,
+    };
+
+    let mut curve = Vec::<PressurePoint>::new();
+    let mut last_time: Option<u32> = None;
+    for (time, pressure) in time_list.iter().zip(pressure_list.iter()) {
+        let time_s = match time.as_f64() {
+            Some(time_s) if time_s.is_finite() && time_s >= 0.0 => time_s,
+            _ => continue,
+        };
+        let pressure_bar = match pressure.as_f64() {
+            Some(pressure_bar) if pressure_bar.is_finite() && pressure_bar >= 0.0 => pressure_bar,
+            _ => continue,
+        };
+        let point_time = time_s.round() as u32;
+        if last_time == Some(point_time) {
+            if let Some(last) = curve.last_mut() {
+                last.pressure = pressure_bar;
+            }
+            continue;
+        }
+        curve.push(PressurePoint {
+            time: point_time,
+            pressure: pressure_bar,
+        });
+        last_time = Some(point_time);
+    }
+
+    if !curve.is_empty() {
+        config.settings.pressure_curve = curve;
+    }
+    config
 }
 
 type DynGpio = Box<dyn Gpio>;
@@ -539,5 +604,61 @@ mod tests {
             &mut pump_started,
         );
         assert!(error.is_none());
+    }
+
+    #[test]
+    fn load_legacy_profile_curve_reads_profile_file_when_curve_empty() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("ospro-profile-load-{stamp}"));
+        let profiles = root.join("profiles");
+        fs::create_dir_all(&profiles).expect("profiles dir should be created");
+        fs::write(
+            profiles.join("Pre-Infusion.json"),
+            r#"{
+                "settings": {
+                    "timeLst": [0.0, 0.4, 1.2, 2.0],
+                    "pressureProfileLst": [3.0, 4.0, 8.0, 9.0]
+                }
+            }"#,
+        )
+        .expect("profile fixture should be written");
+
+        let mut config = RuntimeConfig::default();
+        config.session.config_path = root.to_string_lossy().to_string();
+        config.settings.profile = "Pre-Infusion".to_string();
+        config.settings.pressure_curve.clear();
+
+        let loaded = load_legacy_profile_curve(config);
+        assert!(!loaded.settings.pressure_curve.is_empty());
+        assert_eq!(loaded.settings.pressure_curve[0].pressure, 4.0);
+
+        let _ = fs::remove_file(profiles.join("Pre-Infusion.json"));
+        let _ = fs::remove_dir(profiles);
+        let _ = fs::remove_dir(root);
+    }
+
+    #[test]
+    fn load_legacy_profile_curve_keeps_existing_curve_or_manual_profile() {
+        let mut with_curve = RuntimeConfig::default();
+        with_curve.settings.profile = "Pre-Infusion".to_string();
+        with_curve.settings.pressure_curve = vec![PressurePoint {
+            time: 1,
+            pressure: 5.0,
+        }];
+        let unchanged = load_legacy_profile_curve(with_curve.clone());
+        assert_eq!(
+            unchanged.settings.pressure_curve,
+            with_curve.settings.pressure_curve
+        );
+
+        let manual = RuntimeConfig::default();
+        let loaded_manual = load_legacy_profile_curve(manual.clone());
+        assert_eq!(
+            loaded_manual.settings.pressure_curve,
+            manual.settings.pressure_curve
+        );
     }
 }

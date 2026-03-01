@@ -9,3 +9,4 @@ license = "MIT"
 ospro-core.workspace = true
 crossbeam-channel = "0.5.15"
 chrono = "0.4"
+serde_json = "1.0"

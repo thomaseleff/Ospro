@@ -3097,6 +3097,7 @@ dependencies = [
  "chrono",
  "crossbeam-channel",
  "ospro-core",
+ "serde_json",
 ]
 
 [[package]]
