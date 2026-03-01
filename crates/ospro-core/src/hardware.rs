@@ -78,6 +78,24 @@ pub trait Gpio {
     fn cleanup(&mut self, pin: Option<u8>) -> Result<(), HardwareError>;
 }
 
+impl<T: Gpio + ?Sized> Gpio for Box<T> {
+    fn setup(&mut self, pin: u8, mode: PinMode, pull: Pull) -> Result<(), HardwareError> {
+        (**self).setup(pin, mode, pull)
+    }
+
+    fn write(&mut self, pin: u8, level: Level) -> Result<(), HardwareError> {
+        (**self).write(pin, level)
+    }
+
+    fn read(&self, pin: u8) -> Result<Level, HardwareError> {
+        (**self).read(pin)
+    }
+
+    fn cleanup(&mut self, pin: Option<u8>) -> Result<(), HardwareError> {
+        (**self).cleanup(pin)
+    }
+}
+
 /// PWM abstraction used by control loops.
 pub trait Pwm {
     fn start(
@@ -89,6 +107,29 @@ pub trait Pwm {
     fn set_duty_cycle(&mut self, pin: u8, duty_cycle_percent: f64) -> Result<(), HardwareError>;
     fn duty_cycle(&self, pin: u8) -> Result<f64, HardwareError>;
     fn stop(&mut self, pin: u8) -> Result<(), HardwareError>;
+}
+
+impl<T: Pwm + ?Sized> Pwm for Box<T> {
+    fn start(
+        &mut self,
+        pin: u8,
+        frequency_hz: f64,
+        duty_cycle_percent: f64,
+    ) -> Result<(), HardwareError> {
+        (**self).start(pin, frequency_hz, duty_cycle_percent)
+    }
+
+    fn set_duty_cycle(&mut self, pin: u8, duty_cycle_percent: f64) -> Result<(), HardwareError> {
+        (**self).set_duty_cycle(pin, duty_cycle_percent)
+    }
+
+    fn duty_cycle(&self, pin: u8) -> Result<f64, HardwareError> {
+        (**self).duty_cycle(pin)
+    }
+
+    fn stop(&mut self, pin: u8) -> Result<(), HardwareError> {
+        (**self).stop(pin)
+    }
 }
 
 /// Backend identity and factory for HAL instances.

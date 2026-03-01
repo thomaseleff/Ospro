@@ -2,9 +2,10 @@
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
+use ospro_core::actuators::{ExtractionActuator, PwmActuator};
 use ospro_core::config::RuntimeConfig;
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
-use ospro_core::hardware::HardwareBackend;
+use ospro_core::hardware::{Gpio, HardwareBackend, HardwareError, Pwm};
 use ospro_core::telemetry::{ExtractionMetadata, ExtractionSample, TelemetryRuntime};
 use ospro_core::ui::{StateUpdate, UiEvent, UiRuntime};
 use std::fs;
@@ -16,12 +17,12 @@ use std::time::{Duration, Instant};
 
 fn main() {
     let config = RuntimeConfig::default();
-    let _hardware = HardwareBackend::mock();
+    let hardware = HardwareBackend::mock();
     let _telemetry = TelemetryRuntime::new();
     let (ui, update_tx, event_rx) = UiRuntime::new();
     let running = Arc::new(AtomicBool::new(true));
     let _supervisor_thread =
-        spawn_runtime_supervisor(config, event_rx, update_tx, Arc::clone(&running));
+        spawn_runtime_supervisor(config, hardware, event_rx, update_tx, Arc::clone(&running));
     ui.run();
     running.store(false, Ordering::Relaxed);
 }
@@ -30,8 +31,76 @@ fn summarize_actions(actions: &[Action]) -> usize {
     actions.len()
 }
 
+type DynGpio = Box<dyn Gpio>;
+type DynPwm = Box<dyn Pwm>;
+
+fn apply_actions(
+    actions: &[Action],
+    extraction: &mut Option<ExtractionActuator<DynGpio>>,
+    heater: &mut Option<PwmActuator<DynPwm>>,
+    pump: &mut Option<PwmActuator<DynPwm>>,
+    heater_started: &mut bool,
+    pump_started: &mut bool,
+) -> Option<HardwareError> {
+    for action in actions {
+        let result = match action {
+            Action::StartExtractionOutput => extraction.as_mut().map(|a| a.start()).transpose(),
+            Action::SetHeaterDuty(duty) => match heater.as_mut() {
+                Some(actuator) => if *heater_started {
+                    actuator.set_duty_cycle(*duty)
+                } else {
+                    *heater_started = true;
+                    actuator.start(*duty)
+                }
+                .map(Some),
+                None => Ok(None),
+            },
+            Action::SetPumpDuty(duty) => match pump.as_mut() {
+                Some(actuator) => if *pump_started {
+                    actuator.set_duty_cycle(*duty)
+                } else {
+                    *pump_started = true;
+                    actuator.start(*duty)
+                }
+                .map(Some),
+                None => Ok(None),
+            },
+            Action::Shutdown => {
+                if let Some(actuator) = extraction.as_mut() {
+                    if let Err(error) = actuator.stop() {
+                        return Some(error);
+                    }
+                }
+                if let Some(actuator) = heater.as_mut() {
+                    if *heater_started {
+                        if let Err(error) = actuator.stop() {
+                            return Some(error);
+                        }
+                    }
+                    *heater_started = false;
+                }
+                if let Some(actuator) = pump.as_mut() {
+                    if *pump_started {
+                        if let Err(error) = actuator.stop() {
+                            return Some(error);
+                        }
+                    }
+                    *pump_started = false;
+                }
+                Ok(Some(()))
+            }
+            Action::StartTimer(_) | Action::SaveData | Action::ResetData => Ok(None),
+        };
+        if let Err(error) = result {
+            return Some(error);
+        }
+    }
+    None
+}
+
 fn spawn_runtime_supervisor(
     config: RuntimeConfig,
+    hardware: HardwareBackend,
     event_rx: Receiver<UiEvent>,
     update_tx: Sender<StateUpdate>,
     running: Arc<AtomicBool>,
@@ -40,12 +109,14 @@ fn spawn_runtime_supervisor(
         while running.load(Ordering::Relaxed) {
             let worker_running = Arc::clone(&running);
             let worker_config = config.clone();
+            let worker_hardware = hardware.clone();
             let worker_event_rx = event_rx.clone();
             let worker_update_tx = update_tx.clone();
 
             let worker = thread::spawn(move || {
                 run_runtime_loop(
                     worker_config,
+                    worker_hardware,
                     worker_event_rx,
                     worker_update_tx,
                     worker_running,
@@ -62,11 +133,18 @@ fn spawn_runtime_supervisor(
 
 fn run_runtime_loop(
     config: RuntimeConfig,
+    hardware: HardwareBackend,
     event_rx: Receiver<UiEvent>,
     update_tx: Sender<StateUpdate>,
     running: Arc<AtomicBool>,
 ) {
     let mut control = ControlEngine::new(config.clone());
+    let mut extraction =
+        ExtractionActuator::new(hardware.create_gpio(), config.extraction.pin).ok();
+    let mut heater = PwmActuator::new(hardware.create_pwm(), config.tpid.pin, 1.0).ok();
+    let mut pump = PwmActuator::new(hardware.create_pwm(), config.ppid.pin, 1.0).ok();
+    let mut heater_started = false;
+    let mut pump_started = false;
     let mut shot_start: Option<Instant> = None;
     let mut last_update = Instant::now();
     let mut temperatures = Vec::<f64>::new();
@@ -114,6 +192,16 @@ fn run_runtime_loop(
                 latest_chart_path =
                     persist_extraction_artifacts(&config, &temperatures, &pressures);
             }
+        }
+        if let Some(error) = apply_actions(
+            &actions,
+            &mut extraction,
+            &mut heater,
+            &mut pump,
+            &mut heater_started,
+            &mut pump_started,
+        ) {
+            let _ = control.handle_event(Event::FaultDetected(error));
         }
 
         if matches!(control.state(), BrewState::Done | BrewState::Fault) {
@@ -344,5 +432,31 @@ mod tests {
         assert_eq!(profile_target_value(&config, 0.0), 3.0);
         assert_eq!(profile_target_value(&config, 5.0), 6.0);
         assert_eq!(profile_target_value(&config, 10.0), 9.0);
+    }
+
+    #[test]
+    fn apply_actions_controls_mock_actuators() {
+        let backend = HardwareBackend::mock();
+        let mut extraction = ExtractionActuator::new(backend.create_gpio(), 23).ok();
+        let mut heater = PwmActuator::new(backend.create_pwm(), 25, 1.0).ok();
+        let mut pump = PwmActuator::new(backend.create_pwm(), 24, 1.0).ok();
+        let mut heater_started = false;
+        let mut pump_started = false;
+        let actions = vec![
+            Action::StartExtractionOutput,
+            Action::SetHeaterDuty(25.0),
+            Action::SetPumpDuty(40.0),
+            Action::Shutdown,
+        ];
+
+        let error = apply_actions(
+            &actions,
+            &mut extraction,
+            &mut heater,
+            &mut pump,
+            &mut heater_started,
+            &mut pump_started,
+        );
+        assert!(error.is_none());
     }
 }
