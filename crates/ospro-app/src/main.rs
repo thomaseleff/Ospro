@@ -15,7 +15,7 @@ fn main() {
 
     println!(
         "ospro-app bootstrapped: mode={}, backend={}, state={}, telemetry={}, ui={}",
-        config.mode,
+        config.mode(),
         hardware.backend_name(),
         control.state(),
         telemetry.status(),
@@ -35,7 +35,7 @@ mod tests {
         let telemetry = TelemetryRuntime::new();
         let ui = UiRuntime::new();
 
-        assert_eq!(config.mode, "dev");
+        assert_eq!(config.mode(), "dev");
         assert_eq!(hardware.backend_name(), "mock");
         assert_eq!(control.state(), "idle");
         assert_eq!(telemetry.status(), "ready");

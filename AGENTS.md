@@ -28,6 +28,23 @@ Treat Python runtime code as reference for parity, not as target architecture.
 - Prefer explicit typed API boundaries and cohesive modules.
 - Use `Result`-based error propagation; avoid `unwrap`/`expect` in non-test code.
 
+### Documentation and Comment Conventions
+
+- Document public APIs with rustdoc (`///`) when behavior, constraints, units, or errors are not obvious.
+- Use module/crate docs (`//!`) for intent and architectural context.
+- Prefer clear names and types over explanatory comments.
+- Keep inline comments rare and focused on non-obvious intent, invariants, or safety constraints.
+- Avoid comments that restate code mechanically.
+- Keep docs concise; include examples only when they materially clarify usage.
+
+### Config Modeling Standards
+
+- Runtime-facing Rust models use `snake_case` field names.
+- Legacy Python schema compatibility is implemented with explicit serde aliases (`alias`/`rename`) at boundaries.
+- Domain code must not propagate legacy camelCase names internally.
+- Validation errors must be concrete and field-specific.
+- Prefer strongly typed config sections and explicit defaults over untyped maps.
+
 ## Standard Dev Commands
 
 Use cargo aliases from `.cargo/config.toml`:

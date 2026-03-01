@@ -1,0 +1,72 @@
+{
+  "user": {
+    "first": "Tom",
+    "last": "Eleff"
+  },
+  "session": {
+    "dev": true,
+    "running": true,
+    "gui": true,
+    "temp_pid": true,
+    "pressure_pid": false,
+    "assets_path": "./assets",
+    "config_path": "./config",
+    "diagnostics_path": "./diagnostics",
+    "modules_path": "./",
+    "controllers_path": "./",
+    "sensors_path": "./ospro/sensors",
+    "utils_path": "./ospro/utils"
+  },
+  "formats": {
+    "width": 1024,
+    "height": 600,
+    "font": "Roboto",
+    "header_size": 14,
+    "label_size": 13,
+    "button_size": 13,
+    "counter_size": 115,
+    "metrics_size": 48,
+    "button_height": 30,
+    "button_width": 90,
+    "pad_x": 5,
+    "pad_y": 5,
+    "white": "#FFFFFF",
+    "black": "#000000",
+    "red": "#FF3333",
+    "orange": "#FFAA33",
+    "yellow": "#FFCC33",
+    "green": "#00D05E",
+    "blue": "#3a7ebf",
+    "color1": "#242424",
+    "color2": "#808080",
+    "color3": "#e5e5e5",
+    "color4": "#f2f2f2"
+  },
+  "settings": {
+    "scale_label": "Fahrenheit [F]",
+    "scale": "F",
+    "flush": 1,
+    "profile": "Manual"
+  },
+  "extraction": {
+    "pin": 23
+  },
+  "tpid": {
+    "pin": 25,
+    "sample_rate": 1.0,
+    "set_point": 93,
+    "dead_zone_range": 30,
+    "p": 1.025,
+    "i": 0.001,
+    "d": 0.0
+  },
+  "ppid": {
+    "pin": 24,
+    "sample_rate": 0.1,
+    "set_point": 9.0,
+    "dead_zone_range": 1.0,
+    "p": 0.0,
+    "i": 0.0,
+    "d": 0.0
+  }
+}
