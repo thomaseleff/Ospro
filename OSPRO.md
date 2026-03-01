@@ -278,6 +278,7 @@ Work items:
 - [x] Expand integration/parity coverage for extraction artifacts and diagnostics CSV row contracts (`e5d5781`).
 - [x] Harden runtime startup and operator-facing error surfaces for config/UI initialization paths (`c2ae45d`).
 - [x] Publish Rust runtime/operator docs, release notes draft, rollback checklist, and HIL validation checklist artifacts (`d584ae2`).
+- [x] Add end-to-end runtime loop integration test covering UI events through persisted extraction artifacts (`ef76967`).
 - [ ] Execute and record Raspberry Pi hardware-in-loop validation runs using WS8 checklist artifacts.
 - [ ] Complete final release sign-off after parity + on-device validation evidence is attached.
 
