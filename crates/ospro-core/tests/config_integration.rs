@@ -122,5 +122,5 @@ fn rejects_invalid_flush_range() {
     let error = RuntimeConfig::from_json_str(&invalid).expect_err("config should fail validation");
     assert!(error
         .to_string()
-        .contains("settings.flush must be between 1 and 3"));
+        .contains("settings.flush must be between 1 and 5"));
 }

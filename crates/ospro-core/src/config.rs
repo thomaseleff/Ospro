@@ -339,9 +339,9 @@ impl SettingsConfig {
             ));
         }
 
-        if !(1..=3).contains(&self.flush) {
+        if !(1..=5).contains(&self.flush) {
             return Err(ConfigError::Validation(
-                "settings.flush must be between 1 and 3".to_string(),
+                "settings.flush must be between 1 and 5".to_string(),
             ));
         }
 
