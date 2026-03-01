@@ -258,7 +258,7 @@ Work items:
 - [x] Execute control actions through actuator interfaces (GPIO/PWM) (`35f3ed6`).
 - [x] Ensure deterministic actuator cleanup on runtime exit/fault (`a3836a5`).
 - [x] Add parity harness to compare Rust extraction artifacts against Python fixture/log baselines (`61de42b`).
-- [ ] Add first-class profile file loading parity for `config/profiles/*.json` workflows.
+- [x] Add first-class profile file loading parity for `config/profiles/*.json` workflows (`8a3937b`).
 - [ ] Complete operator-facing extraction review UX parity (beyond chart image plumbing).
 
 Exit criteria:
