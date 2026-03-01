@@ -3,28 +3,85 @@
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
 use ospro_core::actuators::{ExtractionActuator, PwmActuator};
-use ospro_core::config::{PressurePoint, RuntimeConfig};
+use ospro_core::config::{ConfigError, PressurePoint, RuntimeConfig};
 use ospro_core::control::{Action, BrewState, ControlEngine, Event, Readings};
 use ospro_core::hardware::{Gpio, HardwareBackend, HardwareError, Pwm};
 use ospro_core::telemetry::{ExtractionMetadata, ExtractionSample, TelemetryRuntime};
 use ospro_core::ui::{StateUpdate, UiEvent, UiRuntime};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 fn main() {
-    let config = load_legacy_profile_curve(RuntimeConfig::default());
+    let config = load_runtime_config();
     let hardware = HardwareBackend::mock();
     let _telemetry = TelemetryRuntime::new();
-    let (ui, update_tx, event_rx) = UiRuntime::new();
+    let (ui, update_tx, event_rx) = match UiRuntime::new() {
+        Ok(parts) => parts,
+        Err(error) => {
+            eprintln!("OSPRO startup error: failed to initialize touch UI: {error}");
+            return;
+        }
+    };
     let running = Arc::new(AtomicBool::new(true));
     let _supervisor_thread =
         spawn_runtime_supervisor(config, hardware, event_rx, update_tx, Arc::clone(&running));
-    ui.run();
+    if let Err(error) = ui.run() {
+        eprintln!("OSPRO runtime error: UI execution failed: {error}");
+    }
     running.store(false, Ordering::Relaxed);
+}
+
+fn load_runtime_config() -> RuntimeConfig {
+    let requested = std::env::var("OSPRO_CONFIG_PATH").ok().map(PathBuf::from);
+    let default_path = workspace_default_config_path();
+    load_runtime_config_with_paths(requested.as_deref(), &default_path)
+}
+
+fn workspace_default_config_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("config")
+        .join("config.json")
+}
+
+fn load_runtime_config_with_paths(requested: Option<&Path>, default_path: &Path) -> RuntimeConfig {
+    if let Some(path) = requested {
+        match RuntimeConfig::load_from_path(path) {
+            Ok(config) => return load_legacy_profile_curve(config),
+            Err(error) => {
+                eprintln!(
+                    "OSPRO startup warning: failed to load config at '{}': {}",
+                    path.display(),
+                    format_config_error(&error)
+                );
+            }
+        }
+    }
+
+    match RuntimeConfig::load_from_path(default_path) {
+        Ok(config) => load_legacy_profile_curve(config),
+        Err(default_error) => {
+            eprintln!(
+                "OSPRO startup warning: fallback config '{}' also failed: {}",
+                default_path.display(),
+                format_config_error(&default_error)
+            );
+            load_legacy_profile_curve(RuntimeConfig::default())
+        }
+    }
+}
+
+fn format_config_error(error: &ConfigError) -> String {
+    match error {
+        ConfigError::Io(source) => format!("I/O error: {source}"),
+        ConfigError::Parse(source) => format!("JSON parse error: {source}"),
+        ConfigError::Validation(message) => format!("validation error: {message}"),
+    }
 }
 
 fn summarize_actions(actions: &[Action]) -> usize {
@@ -547,13 +604,32 @@ mod tests {
         let hardware = HardwareBackend::mock();
         let control = ControlEngine::new(RuntimeConfig::default());
         let telemetry = TelemetryRuntime::new();
-        let (ui, _update_tx, _event_rx) = UiRuntime::new();
+        let (ui, _update_tx, _event_rx) = UiRuntime::new().expect("ui runtime should initialize");
 
         assert_eq!(config.mode(), "dev");
         assert_eq!(hardware.backend_name(), "mock");
         assert_eq!(control.state(), ospro_core::control::BrewState::Idle);
         assert_eq!(telemetry.status(), "ready");
         assert_eq!(ui.status(), "slint-mvp");
+    }
+
+    #[test]
+    fn load_runtime_config_uses_default_when_requested_path_missing() {
+        let requested = Path::new("T:/__missing__/config.json");
+        let default_path = workspace_default_config_path();
+        let config = load_runtime_config_with_paths(Some(requested), &default_path);
+        assert_eq!(config.user.first, "Tom");
+        assert_eq!(config.user.last, "Eleff");
+    }
+
+    #[test]
+    fn load_runtime_config_falls_back_to_runtime_default_when_all_paths_fail() {
+        let requested = Path::new("T:/__missing__/config.json");
+        let default_path = Path::new("T:/__missing__/default_config.json");
+        let config = load_runtime_config_with_paths(Some(requested), default_path);
+
+        assert_eq!(config.user.first, "Unknown");
+        assert_eq!(config.user.last, "User");
     }
 
     #[test]

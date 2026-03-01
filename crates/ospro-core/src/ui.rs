@@ -94,10 +94,10 @@ pub struct UiRuntime {
 }
 
 impl UiRuntime {
-    pub fn new() -> (Self, Sender<StateUpdate>, Receiver<UiEvent>) {
+    pub fn new() -> Result<(Self, Sender<StateUpdate>, Receiver<UiEvent>), slint::PlatformError> {
         let (update_tx, update_rx) = bounded::<StateUpdate>(100);
         let (event_tx, event_rx) = bounded::<UiEvent>(100);
-        let app = App::new().expect("Failed to create App component");
+        let app = App::new()?;
 
         let weak_app = app.as_weak();
 
@@ -140,21 +140,15 @@ impl UiRuntime {
             }
         });
 
-        (ui, update_tx, event_rx)
+        Ok((ui, update_tx, event_rx))
     }
 
-    pub fn run(self) {
-        self._app.run().expect("Failed to run UI");
+    pub fn run(self) -> Result<(), slint::PlatformError> {
+        self._app.run()
     }
 
     pub fn status(&self) -> &'static str {
         "slint-mvp"
-    }
-}
-
-impl Default for UiRuntime {
-    fn default() -> Self {
-        Self::new().0
     }
 }
 
@@ -164,7 +158,7 @@ mod tests {
 
     #[test]
     fn ui_new_returns_channels() {
-        let (ui, update_tx, event_rx) = UiRuntime::new();
+        let (ui, update_tx, event_rx) = UiRuntime::new().expect("ui runtime should initialize");
         assert_eq!(ui.status(), "slint-mvp");
         update_tx
             .send(StateUpdate {
