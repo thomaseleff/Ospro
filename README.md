@@ -1,84 +1,69 @@
-<html>
-    <body>
-        <p align="center">
-            <img src="https://drive.google.com/uc?export=view&id=1mzPPmuXl7es8ZSfsqqIOqaCTgUjjgs_G">
-        </p>
-        <h1 align="center">Ospro</font></h1>
-        <p align="center">Better than decent, open source espresso.</p>
-    </body>
-</html>
+# Ospro
 
-> [!IMPORTANT]
-> The resources within this repository are under active development and are expected to change significantly over time without guarantee of backwards compatibility.
+Ospro `v0.2.0` is a Rust runtime migration of the Python `v0.1.0` espresso controller behavior.
 
-## Features
-- Data logging of espresso extraction metrics (includes temperature and pressure)
-- Temperature control via PID-algorithm
-- Pressure profiling via PID-algorithm (in-progress)
-- Self-hosted web-interface for browsing historical extractions and creating & sharing espresso extraction profiles (upcoming)
+## Status
 
-**Ospro** is available at an astounding low cost,
-- The cheapest commercial-standard espresso machine with a configurable temperature PID, Rancilio Silvia PID Espresso Machine at **```$1,195 USD```**
-- The cheapest with fully-integrated software, Decent DE1PRO at **```$3,699 USD```**
-- The cheapest with manual pressure control, Rocket R Nine One Dual-Boiler Espresso Machine at **```$6,500 USD```**
+- Active runtime target: Rust (`crates/ospro-app` + `crates/ospro-core`)
+- Parity baseline: Python `v0.1.0` behavior, validated through fixtures and integration tests
+- Scope and workstreams: [`OSPRO.md`](OSPRO.md)
 
-The all-in **Ospro** cost-to-build, including the Gaggia Classic (Evo) Pro, competition-level accessories, hardware and software is less than **```$1,000 USD```**.
+## Repository Layout
 
-## Table of contents
-- [Parts](./parts/README.md)
-- [Guides](./guides/README.md)
+- `crates/ospro-app`: composition root and runtime orchestration
+- `crates/ospro-core`: config, control, hardware, telemetry, and UI modules
+- `config/`: runtime config and pressure profile files
+- `diagnostics/`: extraction CSV and static chart artifacts
+- `guides/`: operator/deployment docs
+- `adr/`: architecture decision records
 
-# Installation
-Instructions for setting-up the Raspberry Pi operating system and Ospro software application.
+## Rust Runtime Quickstart
 
-## Requirements
-- Raspberry Pi OS v2019-07-12 (~[/raspbian/images/raspbian-2019-07-12](http://downloads.raspberrypi.org/raspbian/images/raspbian-2019-07-12/) a.k.a. "buster")
-- Python v3.7.3 (included in the Raspberry Pi OS)
-- Python libraries specified within [requirements_RPi.txt](requirements_RPi.txt)
-- Internet connection
+### Prerequisites
 
-## Instructions
-1. Flash a micro-SD card with the Raspberry PI OS version from 2019-07-12 using the official [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
-2. Once finished, insert the micro-SD card into the Raspberry Pi, then boot.
-3. Once the boot process completes, update the software packages by running the following commands in the terminal,
+- Rust stable toolchain (see `rust-toolchain.toml`)
+- Platform dependencies required by Slint and `plotters`
+
+### Build and Run
+
+```bash
+cargo run -p ospro-app
 ```
-sudo apt update
-sudo apt full-upgrade
+
+Optional config override:
+
+```bash
+OSPRO_CONFIG_PATH=/absolute/path/to/config.json cargo run -p ospro-app
 ```
-4. Install additional software package requirements by running the following command in the terminal,
+
+If `OSPRO_CONFIG_PATH` fails to load, runtime falls back to repository `config/config.json`, then finally to internal defaults.
+
+## Quality Gates
+
+Run before merge:
+
+```bash
+cargo fmt --all
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-targets
 ```
-sudo apt install libatlas-base-dev
-```
-5. Open the Raspberry Pi config and enable SPI and I2C. Open the config by running the following command in the terminal,
-```
-sudo raspi-config
-```
-6. Reboot.
-7. Once the reboot process completes, open the terminal. Navigate to the location of the USB flash drive storage.
-```
-cd /media/{user}/{usb-mass-storage-device-name}
-```
-8. Next, clone the main branch of the **Ospro** repository.
-```
-git clone --branch main https://github.com/thomaseleff/Ospro.git
-```
-9. Navigate back to the root directory.
-```
-cd ~
-```
-10. Create a Python virtual environment to install the Python requirements.
-```
-python3 -m venv .ospro
-```
-11. Activate the environment.
-```
-source .ospro/bin/activate
-```
-12. Install the Python requirements.
-```
-python3 -m pip install -r /media/{user}/{usb-mass-storage-device-name}/Ospro/requirements_RPi.txt
-```
-13. Run **Ospro**.
-```
-python3 /media/{user}/{usb-mass-storage-device-name}/Ospro/main.py
-```
+
+Equivalent aliases are available in `.cargo/config.toml`:
+
+- `cargo fmt-all`
+- `cargo check-all`
+- `cargo lint`
+- `cargo test-all`
+
+## Operator and Release Docs
+
+- Deployment + troubleshooting: [`guides/rust-runtime-operations.md`](guides/rust-runtime-operations.md)
+- Hardware-in-loop validation artifact: [`guides/ws8-hil-validation-checklist.md`](guides/ws8-hil-validation-checklist.md)
+- `v0.2.0` release notes + rollback: [`guides/v0.2.0-release-notes.md`](guides/v0.2.0-release-notes.md)
+
+## Safety Notes
+
+- Control behavior is safety-sensitive; faults must default to fail-safe action paths.
+- Hardware interfaces are trait-bounded and mock-testable.
+- Keep blocking IO off the UI thread and preserve deterministic control timing assumptions.
