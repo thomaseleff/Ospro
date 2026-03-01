@@ -236,6 +236,35 @@ Tests:
 Exit criteria:
 - Static chart generation and display are stable and predictable.
 
+### WS7.1: Gap Closure and Parity Hardening
+
+Estimated size: ~900 changed lines.
+
+Scope:
+- Close known correctness, parity, and robustness gaps identified during WS5-WS7 review.
+- Track completion status for each fix with commit evidence.
+
+Work items:
+- [x] Restore workspace/build integrity and clear immediate compile/runtime blockers (`219357d`).
+- [x] Restore Python-compatible flush range (`1..=5`) (`4fe0265`).
+- [x] Align unhandled control event behavior to non-faulting ignore semantics (`0c9e4ee`).
+- [x] Connect UI intent events to runtime control loop and state updates (`35b2722`).
+- [x] Add telemetry chart boundary tests for empty/short sessions (`89f8714`).
+- [x] Persist extraction artifacts (CSV + chart) and publish chart path to UI (`42b2e8a`).
+- [x] Add runtime worker supervision with auto-restart on panic (`7546f7a`).
+- [x] Enrich diagnostics CSV with Python-style extraction fields (`22c8392`).
+- [x] Use deterministic extraction IDs and Python-style diagnostics timestamps (`78d25f1`).
+- [x] Include profile target series (`ProfileValues`) in diagnostics CSV (`c93e769`).
+- [x] Execute control actions through actuator interfaces (GPIO/PWM) (`35f3ed6`).
+- [x] Ensure deterministic actuator cleanup on runtime exit/fault (`a3836a5`).
+- [ ] Add parity harness to compare Rust extraction artifacts against Python fixture/log baselines.
+- [ ] Add first-class profile file loading parity for `config/profiles/*.json` workflows.
+- [ ] Complete operator-facing extraction review UX parity (beyond chart image plumbing).
+
+Exit criteria:
+- All checked items complete with linked commits.
+- Remaining unchecked items are promoted to WS8 acceptance criteria and validated by tests/checklists.
+
 ### WS8: Integration, Parity, and Release Prep
 
 Estimated size: ~850 changed lines.
