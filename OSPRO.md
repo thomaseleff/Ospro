@@ -272,15 +272,13 @@ Estimated size: ~850 changed lines.
 Scope:
 - End-to-end integration across crates.
 - Parity validation against Python `v0.1.0` references.
-- On-device Raspberry Pi validation and release documentation.
+- Release documentation and sign-off artifact preparation.
 
 Work items:
 - [x] Expand integration/parity coverage for extraction artifacts and diagnostics CSV row contracts (`e5d5781`).
 - [x] Harden runtime startup and operator-facing error surfaces for config/UI initialization paths (`c2ae45d`).
 - [x] Publish Rust runtime/operator docs, release notes draft, rollback checklist, and HIL validation checklist artifacts (`d584ae2`).
 - [x] Add end-to-end runtime loop integration test covering UI events through persisted extraction artifacts (`ef76967`).
-- [ ] Execute and record Raspberry Pi hardware-in-loop validation runs using WS8 checklist artifacts.
-- [ ] Complete final release sign-off after parity + on-device validation evidence is attached.
 
 Code changes:
 - Final orchestration wiring and startup/runtime polish.
@@ -293,12 +291,34 @@ Documentation:
 
 Tests:
 - Integration tests spanning config/control/hardware mock/UI events.
-- Hardware-in-loop validation checklist artifacts.
 
 Exit criteria:
 - Defined parity checks pass.
-- On-device validation complete.
-- Release package/docs ready.
+- Release package/docs and sign-off artifacts ready.
+
+### WS9: On-Device Validation and Release Sign-Off
+
+Estimated size: ~400 changed lines.
+
+Scope:
+- Execute Raspberry Pi hardware-in-loop validation using WS8-produced checklists/docs.
+- Capture objective validation evidence and finalize release go/no-go decision.
+
+Work items:
+- [ ] Execute and record Raspberry Pi hardware-in-loop validation runs using checklist artifacts.
+- [ ] Attach parity and device validation evidence to release candidate notes.
+- [ ] Complete final release sign-off and rollback readiness confirmation.
+
+Documentation:
+- Completed HIL checklist with run metadata, outcomes, and issues.
+- Finalized release sign-off record.
+
+Tests:
+- On-device scenario checks (manual + scripted where feasible), recorded as artifacts.
+
+Exit criteria:
+- On-device validation complete and recorded.
+- Release sign-off approved with rollback readiness confirmed.
 
 ## Execution and Review Rules
 
@@ -306,7 +326,7 @@ Exit criteria:
 2. Workstream PRs must include explicit estimated and actual line-change counts.
 3. If a workstream estimate exceeds 1,000 lines, split before implementation.
 4. Any scope change to invariants/bounds requires ADR update.
-5. No release without completed WS8 parity and on-device sign-off.
+5. No release without completed WS8 parity and WS9 on-device sign-off.
 
 ## Rust Tooling and Style Enforcement
 
