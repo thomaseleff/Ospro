@@ -3094,6 +3094,7 @@ dependencies = [
 name = "ospro-app"
 version = "0.2.0"
 dependencies = [
+ "crossbeam-channel",
  "ospro-core",
 ]
 
