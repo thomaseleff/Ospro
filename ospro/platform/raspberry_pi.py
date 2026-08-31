@@ -20,8 +20,8 @@ except ImportError:
     raise exceptions.InvalidPlatformError(
         ' '.join([
             'Invalid platform.',
-            'The {raspberry-pi} platform is only available',
-            'on ARM-architecture.'
+            'The {raspberry-pi} platform requires the {rpi} hardware',
+            'libraries. Install them with `uv sync --extra rpi`.'
         ])
     )
 

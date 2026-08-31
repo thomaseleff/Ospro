@@ -37,7 +37,7 @@ def load_interface(
         machine_platform.strip().lower() == TYPES['raspberry-pi']
         and (
             platform.system() != 'Linux'
-            or 'arm' not in platform.machine()
+            or not platform.machine().lower().startswith(('arm', 'aarch64'))
         )
     ):
         raise exceptions.InvalidPlatformError(
