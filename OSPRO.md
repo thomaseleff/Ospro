@@ -6,20 +6,6 @@ Ospro is a Raspberry Pi-based espresso control application with a local touch UI
 
 `v0.2.0` is a full runtime migration from the Python `v0.1.0` baseline to Rust to improve reliability, maintainability, performance predictability, and architecture clarity while preserving core brewing behavior.
 
-## Progress
-
-- Date: 2026-03-01
-- Active branch: `v0.2.0-rust`
-- Completed:
-  - WS1 committed (`125590b`): governance docs, Rust tooling standards, CI quality gates, simplified workspace scaffold.
-  - WS2 committed (`bff47a0`): Rust-style typed config model, legacy Python schema compatibility loader, validation rules, integration tests + fixtures.
-  - WS3 committed (`54965e2`): Hardware Abstraction Layer (HAL traits, mock backend behavior, Raspberry Pi backend skeleton, hardware error taxonomy).
-  - WS4 committed (`7ec2271`): Sensor and Actuator Ports (port MAX31855/ADS1115 sensors, actuator wrappers, conversions, docs, tests).
-  - WS5 committed: Control Core and Safety State Machine (state machine, PID controller w/ deadband/windup, brew config, tests).
-  - WS6 committed (`4ae8f5c`): Slint Touch UI MVP.
-- In progress:
-  - WS7 Static Plotting and Extraction Review.
-
 ## Invariants
 
 1. Local-first operation: brewing must not depend on network access.
@@ -68,235 +54,307 @@ Workstream policy:
 - Target roughly 600 changed lines per workstream.
 - No workstream may exceed 1,000 estimated changed lines.
 
-### WS1: Foundation and Governance
+| Workstream | Status | Commits | Note |
+| --- | --- | --- | --- |
+| WS1: Foundation and Governance | Completed | `125590b` | Workspace, governance docs, and CI quality gates established. |
+| WS2: Config and Domain Models | Completed | `bff47a0` | Typed config model + legacy Python schema compatibility + validation/tests. |
+| WS3: Hardware Abstraction Layer | Completed | `54965e2` | HAL traits, mock backend, and Raspberry Pi backend skeleton landed. |
+| WS4: Sensor and Actuator Ports | Completed | `7ec2271` | Sensor/actuator ports and parity-oriented conversion behavior landed. |
+| WS5: Control Core and Safety State Machine | Completed | `aefebfd` | Deterministic control state machine + PID behavior and safety tests landed. |
+| WS6: Slint Touch UI MVP | Completed | `4ae8f5c` | Touch UI MVP integrated with runtime and quality gates passing. |
+| WS7: Static Plotting and Extraction Review | Completed | `89f8714`, `42b2e8a`, `b3cce14` | Chart rendering, persisted artifacts, and extraction review UX parity complete. |
+| WS7.1: Gap Closure and Parity Hardening | Completed | `219357d`..`b3cce14` | Correctness/parity hardening checklist completed with commit evidence. |
+| WS8: Integration, Parity, and Release Prep | Completed | `e5d5781`, `c2ae45d`, `d584ae2`, `ef76967` | Integration/parity tests, startup hardening, and release artifacts completed. |
+| WS9: GUI Parity Closure (Python -> Rust) | Not started | N/A | Close the UI/UX gap between `dashboard.py` and Rust Slint UI using `GUI.md` + `THEME.md` as implementation contract. |
+| WS10: GUI Theme Infrastructure Hardening (Post-Parity) | Not started | N/A | Optional post-parity refactor for reusable theme architecture once WS9 proves concrete needs. |
+| WS11: GUI QA Automation Hardening (Post-Parity) | Not started | N/A | Optional post-parity visual QA automation (goldens/diff tooling) after manual parity is stable. |
+| WS12: On-Device Validation and Release Sign-Off | Not started | N/A | Final Raspberry Pi HIL validation and release sign-off pending after GUI parity closure. |
 
-Estimated size: ~700 changed lines.
+### WS9: GUI Parity Closure (Python -> Rust)
+
+Estimated size: ~900 changed lines total, executed as bounded slices (`<= 600` lines each, no slice `> 1,000`).
+
+Objective:
+- Replace current Slint MVP presentation with a production GUI matching Python `v0.1.0` behavior and layout intent for `1024x600`.
+- Implement screen/state structure from `GUI.md`.
+- Implement visual language from `THEME.md` (Nord-based semantic tokens).
+
+#### WS9 Gap Analysis (Current State vs Target)
+
+Observed current Rust UI implementation:
+- Current Slint UI is a single MVP window with basic text + three buttons:
+  - `crates/ospro-core/src/ui.rs:7`..`69`
+  - Title still `Ospro WS6` at `crates/ospro-core/src/ui.rs:10`
+  - `1024x768` viewport at `crates/ospro-core/src/ui.rs:8`..`9` (target is `1024x600`)
+  - No screen routing (`Home/Dashboard/Plot/Settings/Profile Editor`)
+- Current UI event model only includes:
+  - `StartBrew`, `StopBrew`, `Reset` at `crates/ospro-core/src/ui.rs:72`..`76`
+- `UiRuntime::status()` still reports `"slint-mvp"`:
+  - `crates/ospro-core/src/ui.rs:150`..`152`
+  - Asserted in app tests at `crates/ospro-app/src/main.rs:651`
+- Runtime loop currently pushes fixed synthetic readings (`93C`, `9 bar`) and does not expose full settings/profile editing intents:
+  - `crates/ospro-app/src/main.rs:348`..`351`
+
+Python baseline breadth (already implemented in `dashboard.py`):
+- Dashboard controls + stateful enable/disable behavior:
+  - `dashboard.py:2172`..`2575`
+- Plot screen with correl statistic and add-profile flow:
+  - `dashboard.py:2578`..`2966`
+- Settings screen with scale/setpoint/profile/flush controls:
+  - `dashboard.py:2969`..`3305`
+- Pressure profile editor with sliders + live profile plotting:
+  - `dashboard.py:3308`..`4072`
+- Root shell / home screen and navigation:
+  - `dashboard.py:4075`..`4550`
+
+Target spec references:
+- Layout contract and screen/control IDs in `GUI.md:7`..`271`
+- Nord token semantics and component style constraints in `THEME.md:25`..`260`
+
+#### Target UI Architecture for WS9
+
+```text
++-----------------------------+        +----------------------------------+
+|  Slint View Layer           |        |  Runtime Orchestrator            |
+|  (ospro-core::ui)           |        |  (ospro-app main loop)           |
+|                             |        |                                  |
+|  Screen Router              |<------>|  UiEvent receiver                |
+|  - Home                     | events |  - start/stop/reset              |
+|  - Dashboard                |        |  - settings/profile mutations    |
+|  - Plot                     |        |  - modal decisions               |
+|  - Settings                 |        |                                  |
+|  - Profile Editor           |        |  StateUpdate sender              |
+|  - Modals                   | update |  - state + metrics + availability|
++-----------------------------+        +----------------------------------+
+         |
+         v
++-----------------------------+
+| Theme Tokens (THEME.md)     |
+| + Layout Contract (GUI.md)  |
++-----------------------------+
+```
+
+#### Data / Event Model Delta Required
+
+Current events are insufficient for parity. Expand `UiEvent` and `StateUpdate` in `crates/ospro-core/src/ui.rs`.
+
+Proposed `UiEvent` additions (minimum):
+- `OpenDashboard`, `OpenSettings`, `OpenPlot`, `Back`
+- `SaveExtraction`, `Flush`
+- `SetScale(String)`, `SetSetPoint(f64)`, `SetFlush(u8)`, `SetProfile(String)`
+- `OpenProfileEditor { edit_existing: bool }`
+- `ProfileEditorChanged(ProfileDraftPatch)`
+- `SaveProfile`, `DeleteProfile(String)`, `RefreshProfiles`
+- Modal intents: `ConfirmYes(ModalKind)`, `ConfirmNo(ModalKind)`
+
+Proposed `StateUpdate` additions (minimum):
+- `active_screen`, `modal_state`
+- `button_enabled` flags mirroring `GUI.md` IDs (`D04`..`D09`, etc.)
+- Settings form values + selectable profile list
+- Profile editor draft values + derived params summary
+- Theme mode/token references (or derived style enum)
+
+Mock contract sketch:
+
+```rust
+pub enum Screen {
+    Home,
+    Dashboard(DashboardState),
+    Plot,
+    Settings,
+    ProfileEditor,
+}
+
+pub enum DashboardState {
+    Idle,
+    Extracting { manual_stop_allowed: bool },
+    Stopped,
+    Fault,
+}
+
+pub struct UiAvailability {
+    pub start: bool,
+    pub stop: bool,
+    pub plot: bool,
+    pub save: bool,
+    pub reset: bool,
+    pub settings: bool,
+    pub back: bool,
+}
+```
+
+#### Layout Delivery Plan (Bounded Slices)
+
+WS9.1 (`~450` lines) - Shell, routing, and Dashboard parity
+- Replace MVP single-layout Slint tree with screen router and `1024x600` root window.
+- Implement `S1`, `S2`, `S3`, `S4` from `GUI.md`.
+- Implement state-dependent button availability parity for dashboard flow.
+- Files:
+  - `crates/ospro-core/src/ui.rs` (primary)
+  - `crates/ospro-app/src/main.rs` (event handling + update mapping)
+- Tests:
+  - UI state mapping unit tests (`Idle/Extracting/Stopped` -> enabled controls)
+  - Runtime tests asserting dashboard transitions populate matching availability flags.
+
+WS9.2 (`~300` lines) - Plot + Settings parity
+- Implement `S5` and `S6` layout + events.
+- Wire settings interactions into runtime/config mutation path.
+- Keep plot image integration, but place in `S5` structure and include profile/duration/correl fields.
+- Files:
+  - `crates/ospro-core/src/ui.rs`
+  - `crates/ospro-app/src/main.rs`
+  - optionally `crates/ospro-core/src/config.rs` (if additional typed update helpers required)
+- Tests:
+  - Settings mutation event tests (scale, set-point, flush, profile)
+  - Plot visibility and review metadata mapping tests.
+
+WS9.3 (`~550` lines) - Profile editor + modal system + minimal theming application
+- Implement `S7`, `M1`, `M2`, `M3`, `M4` from `GUI.md`.
+- Add profile-draft state and update callbacks.
+- Apply `THEME.md` semantic tokens with the smallest practical implementation (constants/simple mapping). Avoid broad theming framework in WS9.
+- Files:
+  - `crates/ospro-core/src/ui.rs`
+  - optional small theme constants module only if needed (`crates/ospro-core/src/ui_theme.rs`)
+  - `crates/ospro-app/src/main.rs`
+- Tests:
+  - Modal blocking/focus behavior tests (logic-level)
+  - Basic theme token mapping unit tests
+  - Profile editor validation path tests (`Manual` restrictions, overwrite flow).
+
+Note: If any slice estimate trends above `1,000` lines, split before implementation.
+
+#### Screen/Feature Parity Matrix
+
+| Capability | Python baseline reference | Rust current | WS9 target |
+| --- | --- | --- | --- |
+| Home screen | `dashboard.py:4262`..`4350` | Missing | Implement `S1` |
+| Dashboard stateful controls | `dashboard.py:2172`..`2575`, `905`..`1331` | Partial (Start/Stop/Reset only) | Implement `S2/S3/S4` parity |
+| Plot screen + add profile | `dashboard.py:2578`..`2966` | Partial image only | Implement `S5` + add-profile modal flow |
+| Settings screen | `dashboard.py:2969`..`3305` | Missing | Implement `S6` with config events |
+| Profile editor | `dashboard.py:3308`..`4072` | Missing | Implement `S7` |
+| Error/warn/confirm modals | `dashboard.py:95`..`1885` | Missing | Implement `M1..M4` |
+| Theme fidelity | `THEME.md:25`..`260` | Missing | Apply semantic tokens |
+| Layout contract compliance | `GUI.md:7`..`271` | Missing | Full compliance checks |
+
+#### Acceptance Criteria
+
+- `cargo run` displays `1024x600` GUI with screen set `S1`..`S7` and modal set `M1`..`M4`.
+- Dashboard controls follow behavioral contract from `GUI.md` section `5`.
+- Theme token mapping reflects `THEME.md` (at minimum colors + typography scale + button states).
+- No regression to safety constraints:
+  - Extracting state still prevents unsafe control combinations.
+  - Fault state remains fail-safe.
+- Tests and quality gates pass:
+  - `cargo fmt --all`
+  - `cargo check --workspace --all-targets`
+  - `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+  - `cargo test --workspace --all-targets`
+
+#### WS9 Blocking Prerequisites (Must Be Added Before Coding)
+
+1. Minimal visual parity Definition of Done (manual)
+- Add `agents/contracts/visual-parity-baseline.md` with:
+  - required manual captures for `S1..S7`, `M1..M4` at `1024x600`
+  - capture scenarios per state (`idle`, `extracting`, `stopped`, modal-open)
+  - simple pass/fail rule: layout/control behavior matches `GUI.md`; color/type intent matches `THEME.md`.
+
+2. Formal UI state-machine contract
+- Add `agents/contracts/ui-state-machine.md` containing:
+  - screen-level transitions (`Home`, `Dashboard`, `Plot`, `Settings`, `ProfileEditor`)
+  - dashboard substate transitions (`Idle`, `Extracting`, `Stopped`, `Fault`)
+  - modal transitions (`None`, `Error`, `Warning`, `Confirm`, `InputProfileName`)
+  - per-transition definition:
+    - trigger event
+    - guard condition
+    - side effects
+    - resulting availability flags
+
+3. Settings/Profile persistence contract
+- Add `agents/contracts/persistence-contract.md` with explicit rules for:
+  - write timing (immediate vs deferred) per control
+  - profile CRUD semantics (create/edit/delete/overwrite)
+  - I/O error handling UX (modal text, retry/cancel behavior)
+  - rollback behavior for failed writes
+  - mapping to existing config/profile files under `config/` and `config/profiles/`
+
+#### WS9 Required QA Loop (Per PR)
+
+Each WS9 PR is incomplete without:
+- Screenshot artifacts at `1024x600` for changed screens/states.
+- A filled checklist section in `agents/contracts/gui-parity-checklist.md` referencing control IDs (example: `S6.S05`).
+- A short “expected vs actual” table for any intentional divergence from `GUI.md`/`THEME.md`.
+- Evidence that disabled/enabled behavior matches dashboard and modal contracts.
+
+Explicitly out of scope for WS9:
+- Automated screenshot diff tooling.
+- Golden image pipelines.
+- Large reusable design-system abstraction layers.
+
+#### WS9 Early Realistic Data Validation (WS9.1 Gate)
+
+Before WS9.1 is marked complete, replace synthetic static UI values with dynamic sampled updates in the UI test/demo path:
+- Current static readings source: `crates/ospro-app/src/main.rs:348`..`351`.
+- Gate requirement:
+  - demonstrate varying temperature/pressure/timer updates across time
+  - demonstrate non-manual profile path where manual stop becomes unavailable
+  - verify dashboard control enablement under changing runtime state
+
+This gate exists to prevent false confidence from static-value UI behavior.
+
+#### Documentation Deliverables
+
+- Update `GUI.md` only for intentional layout contract changes (not implementation drift).
+- Update `THEME.md` only for intentional theme-token changes (with rationale).
+- Add `agents/contracts/gui-parity-checklist.md` containing:
+  - screen-by-screen acceptance checklist (`S1`..`S7`, `M1`..`M4`)
+  - parity notes vs Python references
+  - screenshots/artifacts from Rust GUI.
+
+#### Recommended PR Strategy
+
+1. PR-A: WS9.1 shell/router/dashboard state parity.
+2. PR-B: WS9.2 plot/settings integration.
+3. PR-C: WS9.3 profile editor/modals/theme.
+
+Each PR should include:
+- Estimated and actual line counts.
+- Updated checklist evidence.
+- Before/after screenshots at `1024x600`.
+
+### WS10: GUI Theme Infrastructure Hardening (Post-Parity)
+
+Estimated size: ~300 changed lines.
 
 Scope:
-- Create migration branch from `main`.
-- Add governance docs (`adr/0001`, repo `AGENTS.md`, `adr/AGENTS.md`).
-- Add this plan (`OSPRO.md`).
-- Scaffold Rust workspace with baseline crate/module layout.
-- Add CI quality gates (`fmt`, `clippy -D warnings`, `test`).
-
-Code changes:
-- Root `Cargo.toml` workspace.
-- Initial crate manifests and placeholder modules.
-- CI workflow and toolchain config.
-
-Documentation:
-- Update root docs for Rust toolchain bootstrap (minimal).
-- Contribution/dev quick-start for workspace commands.
-
-Tests:
-- Workspace smoke tests and CI command verification.
-
-Exit criteria:
-- Workspace compiles.
-- CI gates pass on empty scaffolding.
-
-### WS2: Config and Domain Models
-
-Estimated size: ~800 changed lines.
-
-Scope:
-- Implement typed config/profile models.
-- Build Python `v0.1.0` schema-compatible loader/migrator.
-- Add validation rules and explicit error reporting.
-
-Code changes:
-- `ospro-core::config` model definitions and parser.
-- Migration/normalization from legacy field names.
-- Config write/read contract for Rust runtime.
-
-Documentation:
-- Config schema reference and migration notes.
-
-Tests:
-- Fixture-based parse/migrate tests.
-- Validation failure-path tests.
-- Round-trip serialization tests.
-
-Exit criteria:
-- All baseline configs load and validate predictably.
-
-### WS3: Hardware Abstraction Layer
-
-Estimated size: ~850 changed lines.
-
-Scope:
-- Define HAL traits for GPIO/PWM/SPI/I2C.
-- Implement mock backend and Raspberry Pi backend skeleton.
-- Standardize hardware error taxonomy.
-
-Code changes:
-- `ospro-core::hardware` interfaces and backend modules.
-- Backend selection wiring.
-
-Documentation:
-- HAL contracts and backend behavior notes.
-
-Tests:
-- Mock backend behavior tests.
-- Trait-level contract tests.
-
-Exit criteria:
-- Mock backend fully testable.
-- Pi backend compiles and exposes expected interfaces.
-
-### WS4: Sensor and Actuator Ports
-
-Estimated size: ~900 changed lines.
-
-Scope:
-- Port MAX31855 and ADS1115 sensor access.
-- Port actuator wrappers (extraction output + PWM driver abstraction).
-- Preserve conversion/calibration semantics.
-
-Code changes:
-- Sensor adapters in `ospro-core::hardware` (or a dedicated sensor module if justified).
-- Units conversion and normalization functions.
-
-Documentation:
-- Sensor assumptions/calibration limits.
-
-Tests:
-- Conversion parity tests against reference fixtures.
-- Sensor read error/fallback behavior tests.
-
-Exit criteria:
-- Sensor/actuator interactions are stable under mock + Pi-target build.
-
-### WS5: Control Core and Safety State Machine
-
-Estimated size: ~900 changed lines.
-
-Scope:
-- Implement runtime states and transitions.
-- Implement control tick loop and safety fallback behavior.
-- Isolate pure control logic from IO side effects.
-
-Code changes:
-- `ospro-core::control` state machine and control engine.
-- Event/command model between control and orchestrator.
-
-Documentation:
-- Safety model and transition table.
-
-Tests:
-- Transition matrix tests.
-- Deterministic loop behavior tests.
-- Fault injection tests.
-
-Exit criteria:
-- Control runtime meets invariant safety rules under tested scenarios.
-
-### WS6: Slint Touch UI MVP
-
-Estimated size: ~950 changed lines.
-
-Scope:
-- Implement core touchscreen workflow for brewing operations.
-- Display live metrics and operational state.
-- Wire user intents to orchestration layer.
-
-Code changes:
-- `ospro-core::ui` Slint views/components.
-- View-model bindings and command dispatch.
-
-Documentation:
-- UI flow map and operator interaction notes.
-
-Tests:
-- Presenter/view-model tests.
-- Basic UI interaction tests where feasible.
-
-Exit criteria:
-- Touch-first MVP flow is complete and connected to runtime actions.
-
-### WS7: Static Plotting and Extraction Review
-
-Estimated size: ~700 changed lines.
-
-Scope:
-- Implement static chart rendering pipeline.
-- Display extraction charts in Slint via image buffers.
-
-Code changes:
-- `ospro-core::telemetry` chart renderer (`plotters`).
-- UI integration for chart display.
-
-Documentation:
-- Plotting data contract and rendering pipeline.
-
-Tests:
-- Snapshot/regression tests for deterministic renders.
-- Data boundary tests for empty/short sessions.
-
-Exit criteria:
-- Static chart generation and display are stable and predictable.
-
-### WS7.1: Gap Closure and Parity Hardening
-
-Estimated size: ~900 changed lines.
-
-Scope:
-- Close known correctness, parity, and robustness gaps identified during WS5-WS7 review.
-- Track completion status for each fix with commit evidence.
+- Refactor minimal WS9 theme constants into a reusable typed theme module only where duplication/pain has been proven.
+- Keep behavior and visual output unchanged from WS9 unless explicitly approved.
 
 Work items:
-- [x] Restore workspace/build integrity and clear immediate compile/runtime blockers (`219357d`).
-- [x] Restore Python-compatible flush range (`1..=5`) (`4fe0265`).
-- [x] Align unhandled control event behavior to non-faulting ignore semantics (`0c9e4ee`).
-- [x] Connect UI intent events to runtime control loop and state updates (`35b2722`).
-- [x] Add telemetry chart boundary tests for empty/short sessions (`89f8714`).
-- [x] Persist extraction artifacts (CSV + chart) and publish chart path to UI (`42b2e8a`).
-- [x] Add runtime worker supervision with auto-restart on panic (`7546f7a`).
-- [x] Enrich diagnostics CSV with Python-style extraction fields (`22c8392`).
-- [x] Use deterministic extraction IDs and Python-style diagnostics timestamps (`78d25f1`).
-- [x] Include profile target series (`ProfileValues`) in diagnostics CSV (`c93e769`).
-- [x] Execute control actions through actuator interfaces (GPIO/PWM) (`35f3ed6`).
-- [x] Ensure deterministic actuator cleanup on runtime exit/fault (`a3836a5`).
-- [x] Add parity harness to compare Rust extraction artifacts against Python fixture/log baselines (`61de42b`).
-- [x] Add first-class profile file loading parity for `config/profiles/*.json` workflows (`8a3937b`).
-- [x] Complete operator-facing extraction review UX parity (beyond chart image plumbing) (`b3cce14`).
+- [ ] Introduce typed theme tokens API for reuse (no speculative abstractions).
+- [ ] Consolidate repeated component style mappings.
+- [ ] Add focused tests for token-to-component mapping logic.
 
 Exit criteria:
-- All checked items complete with linked commits.
-- Remaining unchecked items are promoted to WS8 acceptance criteria and validated by tests/checklists.
+- Theme code simpler to maintain than WS9 baseline.
+- No behavioral or visual regression versus WS9 parity captures.
 
-### WS8: Integration, Parity, and Release Prep
+### WS11: GUI QA Automation Hardening (Post-Parity)
 
-Estimated size: ~850 changed lines.
+Estimated size: ~350 changed lines.
 
 Scope:
-- End-to-end integration across crates.
-- Parity validation against Python `v0.1.0` references.
-- Release documentation and sign-off artifact preparation.
+- Add lightweight visual QA automation after WS9 parity is stable.
 
 Work items:
-- [x] Expand integration/parity coverage for extraction artifacts and diagnostics CSV row contracts (`e5d5781`).
-- [x] Harden runtime startup and operator-facing error surfaces for config/UI initialization paths (`c2ae45d`).
-- [x] Publish Rust runtime/operator docs, release notes draft, rollback checklist, and HIL validation checklist artifacts (`d584ae2`).
-- [x] Add end-to-end runtime loop integration test covering UI events through persisted extraction artifacts (`ef76967`).
-
-Code changes:
-- Final orchestration wiring and startup/runtime polish.
-- Error/reporting surfaces for operators.
-
-Documentation:
-- README runtime instructions for Rust.
-- Operator deployment notes and troubleshooting.
-- `v0.2.0` release notes and rollback checklist.
-
-Tests:
-- Integration tests spanning config/control/hardware mock/UI events.
+- [ ] Define repeatable screenshot capture script for `1024x600`.
+- [ ] Add baseline artifact structure for key screens/states.
+- [ ] Add CI-friendly comparison checks with practical tolerance and review workflow.
 
 Exit criteria:
-- Defined parity checks pass.
-- Release package/docs and sign-off artifacts ready.
+- Automated visual checks catch unintended GUI regressions.
+- Manual parity checklist remains source of truth for intentional changes.
 
-### WS9: On-Device Validation and Release Sign-Off
+### WS12: On-Device Validation and Release Sign-Off
 
 Estimated size: ~400 changed lines.
 
@@ -326,7 +384,7 @@ Exit criteria:
 2. Workstream PRs must include explicit estimated and actual line-change counts.
 3. If a workstream estimate exceeds 1,000 lines, split before implementation.
 4. Any scope change to invariants/bounds requires ADR update.
-5. No release without completed WS8 parity and WS9 on-device sign-off.
+5. No release without completed WS8 parity, WS9 GUI parity closure, and WS12 on-device sign-off.
 
 ## Rust Tooling and Style Enforcement
 
