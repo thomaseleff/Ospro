@@ -1,19 +1,7 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : utils.py
-Location    : ~/ospro/utils/
-Author      : Tom Eleff
-Published   : 2023-07-11
-Revised on  : 2023-09-03
-
-Description
----------------------------------------------------------------------
-Contains the utility functions necessary for managing configuration,
+""" Contains the utility functions necessary for managing configuration,
 validation and user-logging.
 """
 
-# Import Modules
 import json
 import os
 import time

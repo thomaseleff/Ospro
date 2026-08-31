@@ -1,273 +1,266 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : temp_pid.py
-Location    : ~/
-Author      : Tom Eleff
-Published   : 2023-06-25
-Revised on  : 2023-07-07
+""" Temperature PID-controller """
 
-Description
----------------------------------------------------------------------
-Runs the temperature PID controller.
-"""
-
-# Import modules
 import os
 import sys
 import time
 import copy
-import ospro.utils.utils as utils
-import ospro.sensors.temp as temp
+from pytensils import config
+from ospro import logging, exceptions, errors
+from ospro.platform import factory
+from ospro.sensors import temp as ts
+from ospro.controllers import temp as tc
 
-# Initialize global variables
-config = utils.read_config(
-    configLoc=os.path.join(
-        os.path.dirname(__file__),
-        'config',
-        'config.json'
+if __name__ == '__main__':
+
+    # Setup logging
+    Logging = logging.get_temperature_pid_logger()
+
+    # Load configuration
+    Config = config.Handler(
+        path=os.path.join(
+            os.path.dirname(__file__),
+            'config'
+        )
     )
-)
 
-# Configure environment
-if not config['session']['dev']:
+    # Validate configuration
+    if Config.validate(
+        dtypes=config.Handler(
+            path=os.path.join(
+                os.path.dirname(__file__),
+                'config'
+            ),
+            file_name='dtypes.json'
+        ).to_dict()
+    ):
 
-    # Import GPIO module
-    import RPi.GPIO as GPIO
+        # Logging
+        Logging.debug('NOTE: Config validation completed successfully.')
 
-    # Define board mode
-    if not GPIO.getmode():
-        GPIO.setmode(GPIO.BCM)
-    elif GPIO.getmode() == 10:
-        print('ERROR: Invalid GPIO mode (BOARD).')
-        sys.exit()
-    else:
-        pass
+    # Load the platform interface
+    try:
+        GPIO = factory.load_interface(
+            dev=Config.data['session']['dev']
+        )
+    except exceptions.InvalidPlatformError:
+        sys.exit(errors.PLATFORM_ERRNO)
 
-    # Suppress GPIO warnings
-    # GPIO.setwarnings(False)
-
-    # Setup GPIO pins
+    # Setup the interface
     GPIO.setup(
-        config['extraction']['pin'],
+        Config.data['extraction']['pin'],
         GPIO.IN,
         pull_up_down=GPIO.PUD_DOWN
     )
 
-# Main
-if __name__ == '__main__':
-
     # Initialize temperatore sensor
-    tSensor = temp.Sensor(
-        outputPin=config['tPID']['pin']
-    )
-    tSensor.initialize(config)
+    tSensor = ts.Sensor(dev=Config.data['session']['dev'])
 
     # Read temperature
-    previousTemperature = tSensor.read_temp(config)
+    previous_temperature = tSensor.read(
+        set_point=Config.data['tPID']['setPoint']
+    )
 
     # Set initial parameters
-    previousTime = time.time()
+    previous_time = time.time()
     integral = 0
-    previousError = 0
+    previous_error = 0
 
-    # Set intitial pulse width modulation output
-    if not config['session']['dev']:
-        tController = temp.Controller(
-            outputPin=config['tPID']['pin']
-        )
-        tController.initialize(config)
-        tController.start()
+    # Set intitial pulse-width modulation output
+    tController = tc.Controller(
+        dev=Config.data['session']['dev'],
+        output_pin=Config.data['tPID']['pin']
+    )
 
     # Startup delay
     time.sleep(0.001)
 
-    # Run
-    while config['session']['running']:
+    # Catch keyboard interrupt
+    try:
 
-        # Read config
-        config = utils.read_config(
-            configLoc=os.path.join(
-                config['session']['configLoc'],
-                'config.json'
-            )
-        )
+        # Run
+        while Config.data['session']['running']:
 
-        try:
+            # Read config
+            Config.data = Config.read()
 
             # Read temperature
-            temperature = tSensor.read_temp(config)
+            try:
+                temperature = tSensor.read(
+                    set_point=Config.data['tPID']['setPoint']
+                )
+            except RuntimeError:
+                sys.exit(errors.INTERFACE_ERRNO)
 
-            # Avoid unstable temperatures
+            # Pass if temperature is unstable
             if (
                 (
-                    abs(temperature - previousTemperature) >=
-                    config['tPID']['error']
+                    abs(temperature - previous_temperature)
+                    >= Config.data['tPID']['error']
+                )
+            ):
+
+                # Pass
+                # previous_error = 0
+                # integral = 0
+                # output = 0
+                current_time = time.time()
+                Logging.debug(
+                    "{:<{len0}}  {:<{len1}}  {:<{len2}}  {:<{len3}}".format(
+                        'Status: Pass',
+                        'Temp: (%3.0f, %3.0f)' % (
+                            temperature,
+                            Config.data['tPID']['setPoint']
+                        ),
+                        'PWM: N/A',
+                        'PID: [-.--, -.--, -.--]',
+                        len0=13,
+                        len1=16,
+                        len2=10,
+                        len3=22
+                    )
+                )
+
+            # Set full output if temperature is below the dead-zone
+            elif temperature < int(
+                (
+                    Config.data['tPID']['setPoint']
+                    - Config.data['tPID']['deadZoneRange']
                 )
             ):
 
                 # Reset parameters
-                currentTime = time.time()
-                print(
-                    "{:<{len0}} {:<{len1}} {:<{len2}} {:<{len3}}".format(
-                        'Status: Reset',
-                        'Temp: (%.2f, %.2f)' % (
+                previous_error = 0
+                integral = 0
+                output = 100
+                current_time = time.time()
+
+                # Logging
+                Logging.debug(
+                    "{:<{len0}}  {:<{len1}}  {:<{len2}}  {:<{len3}}".format(
+                        'Status: Under',
+                        'Temp: (%3.0f, %3.0f)' % (
                             temperature,
-                            config['tPID']['setPoint']
+                            Config.data['tPID']['setPoint']
                         ),
-                        'PWM: N/A',
-                        'PID: [-.--, -.--, -.--]',
-                        len0=17,
-                        len1=26,
-                        len2=14,
-                        len3=26
+                        'PWM: %3.0f %%' % (output),
+                        'PID: [%.2f, %.2f, %.2f]' % (
+                            0,
+                            0,
+                            0
+                        ),
+                        len0=13,
+                        len1=16,
+                        len2=10,
+                        len3=22
                     )
                 )
 
-            # Calculate pulse width modulation
+            # Set zero output if temperature is above the set-point
+            elif temperature >= int(
+                Config.data['tPID']['setPoint']
+                + ts.ACCURACY
+            ):
+
+                # Reset parameters
+                previous_error = 0
+                integral = 0
+                output = 0
+                current_time = time.time()
+
+                # Logging
+                Logging.debug(
+                    "{:<{len0}}  {:<{len1}}  {:<{len2}}  {:<{len3}}".format(
+                        'Status: Over',
+                        'Temp: (%3.0f, %3.0f)' % (
+                            temperature,
+                            Config.data['tPID']['setPoint']
+                        ),
+                        'PWM: %3.0f %%' % (output),
+                        'PID: [%.2f, %.2f, %.2f]' % (
+                            0,
+                            0,
+                            0
+                        ),
+                        len0=13,
+                        len1=16,
+                        len2=10,
+                        len3=22
+                    )
+                )
+
+            # Calculate output
             else:
 
-                # Set max output if temperature is below the dead-zone
-                if temperature < int(
-                    (
-                        config['tPID']['setPoint'] -
-                        config['tPID']['deadZoneRange']
+                # Calculate error
+                error = round(
+                    Config.data['tPID']['setPoint'] - temperature,
+                    2
+                )
+
+                # Calculate the proportional output
+                p_out = Config.data['tPID']['p'] * error
+
+                # Calculate the integral output
+                current_time = time.time()
+                delta_time = current_time - previous_time
+                integral += (error * delta_time)
+                i_out = (Config.data['tPID']['i'] * integral)
+
+                # Calculate the derivative output
+                delta_error = error - previous_error
+                derivative = (delta_error / delta_time)
+                d_out = (Config.data['tPID']['d'] * derivative)
+
+                # Calculate the total output
+                output = max(min(int(p_out + i_out + d_out), 100), 0)
+
+                # Logging
+                Logging.debug(
+                    "{:<{len0}}  {:<{len1}}  {:<{len2}}  {:<{len3}}".format(
+                        'Status: Valid',
+                        'Temp: (%3.0f, %3.0f)' % (
+                            temperature,
+                            Config.data['tPID']['setPoint']
+                        ),
+                        'PWM: %3.0f %%' % (output),
+                        'PID: [%.2f, %.2f, %.2f]' % (
+                            abs(max(p_out, 0)),
+                            abs(max(i_out, 0)),
+                            abs(max(d_out, 0))
+                        ),
+                        len0=13,
+                        len1=16,
+                        len2=10,
+                        len3=22
                     )
-                ):
+                )
 
-                    # Reset parameters
-                    previousError = 0
-                    integral = 0
-                    output = 100
-                    currentTime = time.time()
+            # Set default during extraction
+            if GPIO.input(Config.data['extraction']['pin']):
+                output = 10
 
-                    # Output parameters
-                    print(
-                        "{:<{len0}} {:<{len1}} {:<{len2}} {:<{len3}}".format(
-                            'Status: Under',
-                            'Temp: (%.2f, %.2f)' % (
-                                temperature,
-                                config['tPID']['setPoint']
-                            ),
-                            'PWM: %s %%' % (output),
-                            'PID: [%.2f, %.2f, %.2f]' % (
-                                0,
-                                0,
-                                0
-                            ),
-                            len0=17,
-                            len1=26,
-                            len2=14,
-                            len3=26
-                        )
-                    )
-
-                # Set zero output if temperature is above max temperature
-                elif temperature >= 115:
-
-                    # Reset parameters
-                    previousError = 0
-                    integral = 0
-                    output = 0
-                    currentTime = time.time()
-
-                    # Output parameters
-                    print(
-                        "{:<{len0}} {:<{len1}} {:<{len2}} {:<{len3}}".format(
-                            'Status: Over',
-                            'Temp: (%.2f, %.2f)' % (
-                                temperature,
-                                config['tPID']['setPoint']
-                            ),
-                            'PWM: %s %%' % (output),
-                            'PID: [%.2f, %.2f, %.2f]' % (
-                                0,
-                                0,
-                                0
-                            ),
-                            len0=17,
-                            len1=26,
-                            len2=14,
-                            len3=26
-                        )
-                    )
-
-                # Calculate output
-                else:
-
-                    # Calculate error
-                    error = round(config['tPID']['setPoint'] - temperature, 2)
-
-                    # Calculate proportional output
-                    pOut = config['tPID']['p'] * error
-
-                    # Calculate integral output
-                    currentTime = time.time()
-                    deltaTime = currentTime - previousTime
-                    integral += (error * deltaTime)
-                    iOut = (config['tPID']['i'] * integral)
-
-                    # Calculate derivative output
-                    deltaError = error - previousError
-                    derivative = (deltaError/deltaTime)
-                    dOut = (config['tPID']['d'] * derivative)
-
-                    output = max(min(int(pOut + iOut + dOut), 100), 0)
-
-                    # Output parameters
-                    print(
-                        "{:<{len0}} {:<{len1}} {:<{len2}} {:<{len3}}".format(
-                            'Status: Valid',
-                            'Temp: (%.2f, %.2f)' % (
-                                temperature,
-                                config['tPID']['setPoint']
-                            ),
-                            'PWM: %s %%' % (output),
-                            'PID: [%.2f, %.2f, %.2f]' % (
-                                abs(max(pOut, 0)),
-                                abs(max(iOut, 0)),
-                                abs(max(dOut, 0))
-                            ),
-                            len0=17,
-                            len1=26,
-                            len2=14,
-                            len3=26
-                        )
-                    )
-
-            # Set pulse width modulation output
-            if not config['session']['dev']:
-
-                # Set default during extraction
-                if GPIO.input(
-                    config['extraction']['pin']
-                ):
-                    output = 10
-
-                # Update duty cycle
-                tController.update_duty_cycle(output)
+            # Update the duty-cycle
+            tController.update_duty_cycle(output)
 
             # Recalculate time delta for delay
-            deltaTime = (time.time() - previousTime)
+            delta_time = (time.time() - previous_time)
 
             # Update parameters
-            previousTemperature = copy.deepcopy(temperature)
-            previousTime = copy.deepcopy(currentTime)
+            previous_temperature = copy.deepcopy(temperature)
+            previous_time = copy.deepcopy(current_time)
 
             # Delay
-            time.sleep(config['tPID']['sampleRate'])
+            time.sleep(Config.data['tPID']['sampleRate'])
 
-        except KeyboardInterrupt:
+    except KeyboardInterrupt:
 
-            # Terminate pulse width modulation & cleanup
-            if not config['session']['dev']:
-                tController.stop()
-                GPIO.cleanup()
-
-            # Exit
-            sys.exit()
-
-    # Terminate pulse width modulation & cleanup
-    if not config['session']['dev']:
+        # Terminate pulse-width modulation & cleanup
         tController.stop()
         GPIO.cleanup()
+
+        # Exit
+        sys.exit()
+
+    # Terminate pulse-width modulation & cleanup
+    tController.stop()
+    GPIO.cleanup()

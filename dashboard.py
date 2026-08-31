@@ -1,15 +1,5 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : dashboard.py
-Location    : ~/
+""" Dashboard UI """
 
-Description
----------------------------------------------------------------------
-Runs the GUI application.
-"""
-
-# Import modules
 import os
 import sys
 import re
@@ -25,9 +15,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.stats import pearsonr
 from PIL import Image
 
+from ospro import exceptions, errors
+from ospro.platform import factory
+from ospro.sensors import temp as ts
+from ospro.sensors import pressure as ps
 import ospro.utils.utils as utils
-import ospro.sensors.temp as temp
-import ospro.sensors.pressure as pressure
 
 # Initialize global variables
 idling = True
@@ -44,41 +36,25 @@ config = utils.read_config(
     )
 )
 
-# Configure environment
-if not config['session']['dev']:
-
-    # Import GPIO module
-    import RPi.GPIO as GPIO
-
-    # Define board mode
-    if not GPIO.getmode():
-        GPIO.setmode(GPIO.BCM)
-    elif GPIO.getmode() == 10:
-        print('ERROR: Invalid GPIO mode (BOARD).')
-        sys.exit()
-    else:
-        pass
-
-    # Suppress GPIO warnings
-    # GPIO.setwarnings(False)
-
-    # Setup GPIO pins
-    GPIO.setup(
-        config['extraction']['pin'],
-        GPIO.OUT
+# Load the platform interface
+try:
+    GPIO = factory.load_interface(
+        dev=config['session']['dev']
     )
+except exceptions.InvalidPlatformError:
+    sys.exit(errors.PLATFORM_ERRNO)
+
+# Setup the interface
+GPIO.setup(
+    config['extraction']['pin'],
+    GPIO.OUT
+)
 
 # Initialize temperatore sensor
-tSensor = temp.Sensor(
-    outputPin=config['tPID']['pin']
-)
-tSensor.initialize(config)
+tSensor = ts.Sensor(dev=config['session']['dev'])
 
 # Initialize pressure sensor
-pSensor = pressure.Sensor(
-    outputPin=config['pPID']['pin']
-)
-pSensor.initialize(config)
+pSensor = ps.Sensor(dev=config['session']['dev'])
 
 # Assign extraction ID
 if os.path.isdir(config['session']['diagnosticsLoc']):
@@ -377,10 +353,16 @@ def save_extraction(
     # Update application components
     tkCounter.set(float(round(counter / 10, 1)))
     if config['settings']['scale'] == 'F':
-        tkTempValue.set(temp.convert_to_f(tSensor.read_temp(config)))
+        tkTempValue.set(
+            ts.convert_to_f(
+                tSensor.read(set_point=config['tPID']['setPoint'])
+            )
+        )
     else:
-        tkTempValue.set(tSensor.read_temp(config))
-    tkPresValue.set(pSensor.read_pressure(config))
+        tkTempValue.set(
+            tSensor.read(set_point=config['tPID']['setPoint'])
+        )
+    tkPresValue.set(pSensor.read(set_point=config['pPID']['setPoint']))
 
     labelCounter.configure(text_color=theme['CTkLabel']['text_color'])
     buttonStart.configure(state='normal')
@@ -951,10 +933,16 @@ def idle():
 
         # Read sensor values
         if config['settings']['scale'] == 'F':
-            tkTempValue.set(temp.convert_to_f(tSensor.read_temp(config)))
+            tkTempValue.set(
+                ts.convert_to_f(
+                    tSensor.read(set_point=config['tPID']['setPoint'])
+                )
+            )
         else:
-            tkTempValue.set(tSensor.read_temp(config))
-        tkPresValue.set(pSensor.read_pressure(config))
+            tkTempValue.set(
+                tSensor.read(set_point=config['tPID']['setPoint'])
+            )
+        tkPresValue.set(pSensor.read(set_point=config['pPID']['setPoint']))
 
         # Continue idling
         root.after(100, idle)
@@ -997,11 +985,11 @@ def start(
     extracting = True
     flashing = False
 
-    if not config['session']['dev']:
-        GPIO.output(
-            config['extraction']['pin'],
-            GPIO.HIGH
-        )
+    # Setup the interface
+    GPIO.output(
+        config['extraction']['pin'],
+        GPIO.HIGH
+    )
 
     # Update application omponents
     labelCounter.configure(text_color=theme['CTkLabel']['text_color'])
@@ -1097,10 +1085,16 @@ def count(
 
         # Append sensor values
         if config['settings']['scale'] == 'F':
-            temperatureLst.append(temp.convert_to_f(tSensor.read_temp(config)))
+            temperatureLst.append(
+                ts.convert_to_f(
+                    tSensor.read(set_point=config['tPID']['setPoint'])
+                )
+            )
         else:
-            temperatureLst.append(tSensor.read_temp(config))
-        pressureLst.append(pSensor.read_pressure(config))
+            temperatureLst.append(
+                tSensor.read(set_point=config['tPID']['setPoint'])
+            )
+        pressureLst.append(pSensor.read(set_point=config['pPID']['setPoint']))
 
         # Update label text
         tkCounter.set(float(round(counter / 10, 1)))
@@ -1210,11 +1204,11 @@ def stop(
     extracting = False
     flashing = True
 
-    if not config['session']['dev']:
-        GPIO.output(
-            config['extraction']['pin'],
-            GPIO.LOW
-        )
+    # Setup the interface
+    GPIO.output(
+        config['extraction']['pin'],
+        GPIO.LOW
+    )
 
     # Update application omponents
     buttonStart.configure(state='normal')
@@ -1321,10 +1315,16 @@ def reset(
     # Update application components
     tkCounter.set(float(round(counter / 10, 1)))
     if config['settings']['scale'] == 'F':
-        tkTempValue.set(temp.convert_to_f(tSensor.read_temp(config)))
+        tkTempValue.set(
+            ts.convert_to_f(
+                tSensor.read(set_point=config['tPID']['setPoint'])
+            )
+        )
     else:
-        tkTempValue.set(tSensor.read_temp(config))
-    tkPresValue.set(pSensor.read_pressure(config))
+        tkTempValue.set(
+            tSensor.read(set_point=config['tPID']['setPoint'])
+        )
+    tkPresValue.set(pSensor.read(set_point=config['pPID']['setPoint']))
 
     labelCounter.configure(text_color=theme['CTkLabel']['text_color'])
     buttonStart.configure(state='normal')
@@ -1582,7 +1582,7 @@ def delete_callback(
     tkProfile.set(
         textwrap.shorten(
             str(config['settings']['profile']),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
@@ -1629,7 +1629,7 @@ def scale_callback(
             )
 
             # Update tkinter variables
-            tkSetPoint.set(temp.convert_to_f(config['tPID']['setPoint']))
+            tkSetPoint.set(ts.convert_to_f(config['tPID']['setPoint']))
 
         else:
 
@@ -1693,7 +1693,7 @@ def setpoint_callback(
 
     # Update settings
     if config['settings']['scale'] == 'F':
-        config['tPID']['setPoint'] = int(temp.convert_to_c(value))
+        config['tPID']['setPoint'] = int(ts.convert_to_c(value))
     else:
         config['tPID']['setPoint'] = int(float(value))
 
@@ -1737,7 +1737,7 @@ def profile_callback(
     tkProfile.set(
         textwrap.shorten(
             str(value).strip(),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
@@ -4178,7 +4178,7 @@ if __name__ == '__main__':
     # Assign temperature range based on scale value
     if config['settings']['scale'] == 'F':
         setPointLst = list(np.arange(200, 220, 1))
-        tkSetPoint.set(temp.convert_to_f(config['tPID']['setPoint']))
+        tkSetPoint.set(ts.convert_to_f(config['tPID']['setPoint']))
     else:
         setPointLst = [
             round(item, 1) for item in list(np.arange(93.5, 105, 0.5))
@@ -4223,7 +4223,7 @@ if __name__ == '__main__':
     tkProfile.set(
         textwrap.shorten(
             str(config['settings']['profile']),
-            width=30,
+            width=25,
             break_long_words=True
         )
     )
@@ -4245,12 +4245,18 @@ if __name__ == '__main__':
     # Set initial sensor values
     tkTempValue = tk.IntVar(root)
     if config['settings']['scale'] == 'F':
-        tkTempValue.set(temp.convert_to_f(tSensor.read_temp(config)))
+        tkTempValue.set(
+            ts.convert_to_f(
+                tSensor.read(set_point=config['tPID']['setPoint'])
+            )
+        )
     else:
-        tkTempValue.set(tSensor.read_temp(config))
+        tkTempValue.set(
+            tSensor.read(set_point=config['tPID']['setPoint'])
+        )
 
     tkPresValue = tk.DoubleVar(root)
-    tkPresValue.set(pSensor.read_pressure(config))
+    tkPresValue.set(pSensor.read(set_point=config['pPID']['setPoint']))
 
     # Declare main frame components
     labelLogo = customtkinter.CTkLabel(
@@ -4494,8 +4500,7 @@ if __name__ == '__main__':
             root.quit()
 
             # Cleanup
-            if not config['session']['dev']:
-                GPIO.cleanup()
+            GPIO.cleanup()
 
             # Exit
             sys.exit()
@@ -4504,5 +4509,4 @@ if __name__ == '__main__':
     root.quit()
 
     # Cleanup
-    if not config['session']['dev']:
-        GPIO.cleanup()
+    GPIO.cleanup()
