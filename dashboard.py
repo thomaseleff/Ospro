@@ -2136,9 +2136,6 @@ def create_toplevel_frame(
     if not config['session']['dev']:
         frame.configure(cursor='none')
 
-        if fullscreen:
-            frame.attributes('-fullscreen', True)
-
     # Configure frame
     for c in range(0, int(numCols-1)):
         frame.columnconfigure(
@@ -2165,6 +2162,14 @@ def create_toplevel_frame(
 
     # Prevent grid resizing
     frame.grid_propagate(False)
+
+    # Go fullscreen only once the window manager has mapped the toplevel.
+    # CTkToplevel can't be made fullscreen before it's visible, and setting it
+    # after geometry() keeps the two from fighting. wait_visibility() blocks on
+    # the map event itself, so no timed guess to lose on a slow Pi.
+    if fullscreen and not config['session']['dev']:
+        frame.wait_visibility()
+        frame.attributes('-fullscreen', True)
 
     return frame
 

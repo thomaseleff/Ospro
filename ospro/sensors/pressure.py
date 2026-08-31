@@ -52,13 +52,18 @@ class Sensor():
         # Import sensor modules
         if not dev:
 
-            import Adafruit_ADS1x15 as adafruit
+            import board
+            import busio
+            import adafruit_ads1x15.ads1115 as ADS
+            from adafruit_ads1x15.analog_in import AnalogIn
 
             # Initialize sensors
-            self.sensor = adafruit.ADS1115(
-                address=0x48,
-                busnum=1
+            ads = ADS.ADS1115(
+                busio.I2C(board.SCL, board.SDA),
+                address=0x48
             )
+            ads.gain = 2 / 3
+            self.sensor = AnalogIn(ads, 0)  # channel 0; ADS.P0 dropped in ads1x15 >=5
 
         else:
             self.sensor = None
@@ -79,20 +84,19 @@ class Sensor():
         if self.dev:
             pressure = float(
                 random.randint(
-                    set_point - 10 * 10,
-                    set_point + 10 * 10
+                    int(set_point) - 10 * 10,
+                    int(set_point) + 10 * 10
                 ) / 10
             )
         else:
             try:
+
+                # ponytail: `.value` returns the raw 16-bit count, matching
+                #   legacy `read_adc` at gain 2/3 for the ADS1115; re-tune the
+                #   3.0/1750 & 34.0/7.0 constants on-device if psi reads off.
                 pressure = round(
                     (3.0 / 1750)
-                    * (
-                        self.sensor.read_adc(
-                            0,
-                            gain=2 / 3
-                        )
-                    )
+                    * self.sensor.value
                     - (34.0 / 7.0),
                     1
                 )

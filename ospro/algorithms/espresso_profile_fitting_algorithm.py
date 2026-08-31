@@ -12,10 +12,9 @@ extraction time-series.
 
 # Import modules
 import os
-import scipy
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.core.multiarray import interp as compiled_interp
+from scipy.ndimage import uniform_filter1d
 
 
 # Define pressure profile fitting algorithm class
@@ -165,7 +164,7 @@ class EPFA():
 
         # Apply smoothing
         ysmoothed = np.array(
-            scipy.ndimage.uniform_filter1d(
+            uniform_filter1d(
                 y,
                 size=7,
                 mode='reflect'
@@ -484,7 +483,7 @@ class EPFA():
             fp = np.copy(a)
 
         # Derive a possible pressure profile as a linear interpolation
-        return compiled_interp(
+        return np.interp(
             x=x,
             xp=xp,
             fp=fp

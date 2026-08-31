@@ -32,9 +32,9 @@ The all-in **Ospro** cost-to-build, including the Gaggia Classic (Evo) Pro, comp
 Instructions for setting-up the Raspberry Pi operating system and Ospro software application.
 
 ## Requirements
-- Raspberry Pi OS v2019-07-12 (~[/raspbian/images/raspbian-2019-07-12](http://downloads.raspberrypi.org/raspbian/images/raspbian-2019-07-12/) a.k.a. "buster")
-- Python v3.7.3 (included in the Raspberry Pi OS)
-- Python libraries specified within [requirements_RPi.txt](requirements_RPi.txt)
+- Raspberry Pi OS Bookworm (Python 3.11) or Trixie (Python 3.13)
+- Python >=3.11
+- [uv](https://docs.astral.sh/uv/) for dependency management (dependencies are declared in [pyproject.toml](pyproject.toml))
 - Internet connection
 
 ## Instructions
@@ -45,40 +45,35 @@ Instructions for setting-up the Raspberry Pi operating system and Ospro software
 sudo apt update
 sudo apt full-upgrade
 ```
-4. Install additional software package requirements by running the following command in the terminal,
-```
-sudo apt install libatlas-base-dev
-```
-5. Open the Raspberry Pi config and enable SPI and I2C. Open the config by running the following command in the terminal,
+4. Open the Raspberry Pi config and enable SPI and I2C. Open the config by running the following command in the terminal,
 ```
 sudo raspi-config
 ```
-6. Reboot.
-7. Once the reboot process completes, open the terminal. Navigate to the location of the USB flash drive storage.
+5. Reboot.
+6. Once the reboot process completes, open the terminal. Navigate to the location of the USB flash drive storage.
 ```
 cd /media/{user}/{usb-mass-storage-device-name}
 ```
-8. Next, clone the main branch of the **Ospro** repository.
+7. Next, clone the main branch of the **Ospro** repository.
 ```
 git clone --branch main https://github.com/thomaseleff/Ospro.git
 ```
-9. Navigate back to the root directory.
+8. Install [uv](https://docs.astral.sh/uv/) (if not already installed).
 ```
-cd ~
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-10. Create a Python virtual environment to install the Python requirements.
+9. Navigate into the repository and install the Python requirements. On the Raspberry Pi, include the `rpi` extra for the hardware libraries.
 ```
-python3 -m venv .ospro
+cd Ospro
+uv sync --extra rpi
 ```
-11. Activate the environment.
+> On non-Raspberry-Pi machines (e.g. for development), install without the extra: `uv sync`.
+>
+> When running from a USB flash drive, its filesystem (e.g. FAT32/exFAT) may not support the links `uv` needs for the virtual environment. Point the environment at the home directory (on the internal SD card) before syncing:
+> ```
+> export UV_PROJECT_ENVIRONMENT=/home/{user}/.venv
+> ```
+10. Run **Ospro**.
 ```
-source .ospro/bin/activate
-```
-12. Install the Python requirements.
-```
-python3 -m pip install -r /media/{user}/{usb-mass-storage-device-name}/Ospro/requirements_RPi.txt
-```
-13. Run **Ospro**.
-```
-python3 /media/{user}/{usb-mass-storage-device-name}/Ospro/main.py
+uv run python main.py
 ```

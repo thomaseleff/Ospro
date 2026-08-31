@@ -126,8 +126,9 @@ def poll(
         Logging.error(
             ' '.join([
                 '%sERROR: Invalid platform.' % (logging.COLORS['red']),
-                'The {raspberry-pi} platform is only available',
-                'on ARM-architecture.%s' % (logging.RESET)
+                'The {raspberry-pi} platform requires ARM-architecture',
+                'and the {rpi} hardware libraries',
+                '(install with `uv sync --extra rpi`).%s' % (logging.RESET)
             ])
         )
 
