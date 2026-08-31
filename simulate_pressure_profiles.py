@@ -1,18 +1,7 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : simulate_pressure_profiles.py
-Location    : ~/
-Author      : Tom Eleff
-Published   : 2023-09-03
-Revised on  : ~
-
-Description
----------------------------------------------------------------------
-Simulates espresso pressure profiles.
+""" Ad-hoc analysis that generates simulated pressure profiles from espresso
+extraction data.
 """
 
-# Import modules
 import os
 import time
 import datetime as dt

@@ -1,225 +1,102 @@
-"""
-Information
----------------------------------------------------------------------
-Name        : pressure.py
-Location    : ~/ospro/sensors
+""" Pressure sensor-API
 
-Description
----------------------------------------------------------------------
-Contains the pressure sensor classes and functions.
+Sensor
+------
+Pressure transducer 1/8 IN NPT thread stainless steel (500 PSI)
+- Measures 0 to 500 psi output in 1 psi increments
+  - ±0.5% psi in accuracy
+- 5v power supply and logic level compliant
+- 0.5v - 4.5v linear voltage output,
+  - 0 psi outputs 0.5v
+  - 500 psi outputs 4.5v
 """
 
-# Import modules
 import random
-import sys
+from ospro.platform import factory
 
-
-# Define temperature sensor class
-class Controller():
-
-    def __init__(
-        self,
-        outputPin
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
-
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Controller class.
-        """
-
-        # Assign class variables
-        self.outputPin = outputPin
-
-    def initialize(
-        self,
-        config
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
-
-        Description
-        ---------------------------------------------------------------------
-        Initializes the pressure controller hardware.
-        """
-
-        # Import sensor modules
-        if not config['session']['dev']:
-
-            import RPi.GPIO as GPIO
-
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            self.controller = GPIO.PWM(
-                self.outputPin,
-                600
-            )
-
-            # Start the controller
-            self.controller.start(0)
-
-        else:
-            self.controller = False
-
-    def start(
-        self
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Starts the duty cycle of the pressure controller class.
-        """
-
-        # Start the controller
-        self.controller.start(0)
-
-    def stop(
-        self
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-
-        Description
-        ---------------------------------------------------------------------
-        Stops the duty cycle of the pressure controller class.
-        """
-
-        # Stop the controller
-        self.controller.stop()
-
-    def update_duty_cycle(
-        self,
-        output
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        output                  = <int> Pulse width modulation output duty
-                                    cycle.
-
-        Description
-        ---------------------------------------------------------------------
-        Changes the duty cycle of the pressure controller class.
-        """
-
-        # Update duty cycle
-        self.controller.ChangeDutyCycle(output)
+# Assign the minimum pressure sensor accuracy
+#   for the pressure sensor hardware
+ACCURACY: float = 0.344738
+MIN: int = 0
+MAX: int = 500
+RANDOM_SEED: int = 9
 
 
 class Sensor():
+    """ A `class` that represents a pressure sensor.
+
+    Parameters
+    ----------
+    dev: `bool`
+        `True` or `False`, whether dev-mode is enabled.
+    """
 
     def __init__(
         self,
-        outputPin
+        dev: bool
     ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        outputPin               = <int> Pin number that identifies the
-                                    pulse width modulation pin.
+        """ Creates an instance of the pressure sensor.
 
-        Description
-        ---------------------------------------------------------------------
-        Creates an instance of the Sensor class.
+        Parameters
+        ----------
+        dev: `bool`
+            `True` or `False`, whether dev-mode is enabled.
         """
 
         # Assign class variables
-        self.outputPin = outputPin
+        self.dev: bool = dev
 
-    def initialize(
-        self,
-        config
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
-        config                  = <dict> Dictionary object containing
-                                    the application settings
-
-        Description
-        ---------------------------------------------------------------------
-        Initializes the pressure sensor hardware.
-        """
+        # Load the raspberry-pi platform interface
+        _ = factory.load_interface(dev=dev)
 
         # Import sensor modules
-        if not config['session']['dev']:
+        if not dev:
 
-            import RPi.GPIO as GPIO
             import Adafruit_ADS1x15 as adafruit
-
-            # Define board mode
-            if not GPIO.getmode():
-                GPIO.setmode(GPIO.BCM)
-            elif GPIO.getmode() == 10:
-                print('ERROR: Invalid GPIO mode (BOARD).')
-                sys.exit()
-            else:
-                pass
-
-            # Suppress GPIO warnings
-            # GPIO.setwarnings(False)
-
-            # Setup GPIO pins
-            GPIO.setup(
-                self.outputPin,
-                GPIO.OUT
-            )
 
             # Initialize sensors
             self.sensor = adafruit.ADS1115(
                 address=0x48,
                 busnum=1
             )
+
         else:
-            self.sensor = False
+            self.sensor = None
 
-    def read_pressure(
+    def read(
         self,
-        config
-    ):
-        """
-        Variables
-        ---------------------------------------------------------------------
+        set_point: int = RANDOM_SEED
+    ) -> float:
+        """ Returns the pressure in bars.
 
-        Description
-        ---------------------------------------------------------------------
-        Returns the system pressure.
+        Parameters
+        ----------
+        set_point: `int`
+            The set-point in bars of the system.
+                Used for generating random pressure values when {dev} = `True`.
         """
 
-        if config['session']['dev']:
-            pressure = float(random.randint(80, 90) / 10)
+        if self.dev:
+            pressure = float(
+                random.randint(
+                    set_point - 10 * 10,
+                    set_point + 10 * 10
+                ) / 10
+            )
         else:
             try:
                 pressure = round(
-                    (3.0 / 1750) *
-                    (self.sensor.read_adc(
-                        0,
-                        gain=2 / 3
-                    )) - (34.0 / 7.0), 1
+                    (3.0 / 1750)
+                    * (
+                        self.sensor.read_adc(
+                            0,
+                            gain=2 / 3
+                        )
+                    )
+                    - (34.0 / 7.0),
+                    1
                 )
-            except RuntimeError:
-                pass
+            except RuntimeError as e:
+                raise RuntimeError(e)
 
-        return pressure
+        return abs(float(pressure))
